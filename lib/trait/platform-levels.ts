@@ -1,0 +1,195 @@
+import type { DrawingObstacle, PlatformHazard, PlatformLevel, PlatformMechanism, PlatformPoint, PlatformSurface } from './platformer';
+
+const p = (x: number, y: number): PlatformPoint => ({ x, y });
+const floor = (x1: number, x2: number, y: number): PlatformSurface => ({ a: p(x1, y), b: p(x2, y) });
+const route = (points: [number, number][]) => points.map(([x, y]) => p(x, y));
+const gear = (id: string, x: number, y: number, r: number, axis: 'x' | 'y', range: number, speed: number, phase = 0): PlatformHazard => ({ id, type: 'gear', x, y, r, axis, range, speed, phase });
+const spikes = (id: string, x: number, y: number, w: number, h = 26): PlatformHazard => ({ id, type: 'spikes', x, y, w, h });
+const drawing = (id: string, title: string, prompt: string, triggerX: number, points: [number, number][], duration = 2.2): DrawingObstacle => ({ id, title, prompt, triggerX, path: route(points), duration });
+
+/**
+ * Expand the running sections for a scrolling level. Small, unaided jump gaps
+ * stay at most 145 units; only the larger gaps require the drawing hand.
+ * Heights, tooth sizes and stair rises keep the same physical jump difficulty.
+ */
+function wide(level: PlatformLevel, factor = 1.65): PlatformLevel {
+  const point = (q: PlatformPoint): PlatformPoint => ({ x: Math.round(q.x * factor), y: q.y });
+  const surfaces = level.surfaces.map(s => ({ a: point(s.a), b: point(s.b) }));
+  for (let i = 1; i < surfaces.length; i++) {
+    const originalGap = level.surfaces[i].a.x - level.surfaces[i - 1].b.x;
+    if (originalGap > 0 && originalGap <= 160) {
+      const expandedGap = surfaces[i].a.x - surfaces[i - 1].b.x;
+      if (expandedGap > 145) surfaces[i - 1].b.x = surfaces[i].a.x - 145;
+    }
+  }
+  const width = Math.round(level.width * factor);
+  return {
+    ...level, width, start: { ...level.start, x: 160 }, goal: { x: width - 140, y: level.goal.y }, surfaces,
+    hazards: level.hazards.map(h => h.type === 'gear'
+      ? { ...h, x: Math.round(h.x * factor), range: Math.round((h.range ?? 0) * 1.15) }
+      : { ...h, x: Math.round(h.x * factor), w: Math.round(h.w * factor) }),
+    drawings: level.drawings.map(d => ({ ...d, triggerX: Math.round(d.triggerX * factor), path: d.path.map(point), duration: d.duration + 0.3 })),
+    stars: level.stars.map(point), checkpoints: level.checkpoints.map(point),
+  };
+}
+
+/** Six authored courses: three hand constructions, moving hazards and safe flags. */
+const DRAWING_COURSES: PlatformLevel[] = [
+  wide({
+    id: 1, title: 'Le premier passage', subtitle: 'Avance, saute les pièges et appelle la main devant le vide.', palette: 'blue', width: 2600,
+    start: p(160, 430), goal: p(2460, 430),
+    surfaces: [floor(-120, 460, 430), floor(760, 1090, 430), floor(1220, 1560, 430), floor(1850, 2100, 350), floor(2320, 2740, 430)],
+    drawings: [
+      drawing('pont', 'Un pont', 'Appelle la main pour relier les deux rives.', 405, [[460, 430], [760, 430]], 1.9),
+      drawing('marches', 'Des marches', 'La main peut dessiner un escalier.', 1505, [[1560, 430], [1620, 430], [1620, 400], [1680, 400], [1680, 370], [1750, 370], [1750, 350], [1850, 350]]),
+      drawing('descente', 'Une rampe', 'Dessine la descente jusqu’à la dernière ligne.', 2045, [[2100, 350], [2170, 350], [2250, 395], [2320, 430]]),
+    ],
+    hazards: [gear('roue-1', 935, 408, 23, 'x', 45, 1.45), spikes('piques-1', 1320, 404, 48), gear('roue-2', 1980, 325, 24, 'x', 30, 1.75, 1.1)],
+    stars: [p(850, 375), p(1375, 302), p(2070, 295)], checkpoints: [p(815, 430), p(1895, 350), p(2370, 430)],
+  }),
+  wide({
+    id: 2, title: 'Les dents de la ligne', subtitle: 'Les roues bougent. Observe leur passage avant de sauter.', palette: 'terracotta', width: 2800,
+    start: p(160, 430), goal: p(2660, 430),
+    surfaces: [floor(-120, 500, 430), floor(780, 1130, 430), floor(1270, 1540, 430), floor(1800, 2090, 360), floor(2390, 2940, 430)],
+    drawings: [
+      drawing('pont-haut', 'Un pont surélevé', 'La main dessine un passage au-dessus de la roue.', 445, [[500, 430], [575, 370], [705, 370], [780, 430]]),
+      drawing('escalier', 'Un escalier', 'Il manque les marches pour atteindre le balcon.', 1485, [[1540, 430], [1600, 430], [1600, 405], [1665, 405], [1665, 380], [1730, 380], [1730, 360], [1800, 360]]),
+      drawing('dos-ane', 'Une passerelle', 'La main complète la traversée.', 2035, [[2090, 360], [2180, 320], [2280, 320], [2390, 430]]),
+    ],
+    hazards: [gear('roue-sous-pont', 640, 425, 26, 'x', 25, 1.6), gear('roue-1', 940, 406, 25, 'x', 55, 1.65), spikes('piques-1', 1380, 404, 48), gear('roue-2', 1950, 332, 26, 'y', 34, 1.55, 1.5), gear('roue-3', 2535, 407, 25, 'x', 45, 1.9, 2.4)],
+    stars: [p(960, 302), p(2250, 265), p(2620, 330)], checkpoints: [p(825, 430), p(1840, 360), p(2440, 430)],
+  }),
+  wide({
+    id: 3, title: 'Le pendule', subtitle: 'Certaines roues montent et descendent. Choisis ton moment.', palette: 'plum', width: 2950,
+    start: p(160, 430), goal: p(2810, 430),
+    surfaces: [floor(-120, 580, 430), floor(920, 1260, 430), floor(1400, 1670, 430), floor(1960, 2220, 330), floor(2520, 3090, 430)],
+    drawings: [
+      drawing('arche', 'Une arche', 'La main trace le passage au-dessus du vide.', 525, [[580, 430], [650, 385], [850, 385], [920, 430]]),
+      drawing('grandes-marches', 'Des marches', 'Appelle la main pour monter sur la corniche.', 1615, [[1670, 430], [1730, 430], [1730, 400], [1790, 400], [1790, 370], [1850, 370], [1850, 340], [1900, 340], [1900, 330], [1960, 330]], 2.4),
+      drawing('rampe', 'Une longue rampe', 'Une pente dessinée permet de rejoindre la sortie.', 2165, [[2220, 330], [2300, 330], [2420, 395], [2520, 430]]),
+    ],
+    hazards: [gear('pendule-1', 420, 368, 29, 'y', 42, 1.6), gear('roue-du-vide', 760, 475, 27, 'x', 65, 1.5), spikes('piques-1', 1060, 404, 55), gear('roue-1', 1515, 404, 25, 'x', 45, 1.75, 0.7), gear('roue-2', 2110, 306, 25, 'x', 28, 1.8, 2), spikes('piques-2', 2660, 404, 58)],
+    stars: [p(1100, 298), p(2030, 275), p(2720, 310)], checkpoints: [p(970, 430), p(2010, 330), p(2570, 430)],
+  }),
+  wide({
+    id: 4, title: 'Les grandes roues', subtitle: 'Garde de l’élan et utilise les espaces entre les pièges.', palette: 'teal', width: 3100,
+    start: p(160, 430), goal: p(2960, 430),
+    surfaces: [floor(-120, 470, 430), floor(800, 1180, 430), floor(1320, 1680, 430), floor(2040, 2340, 340), floor(2670, 3240, 430)],
+    drawings: [
+      drawing('pont', 'Un pont', 'La main raccorde cette grande coupure.', 415, [[470, 430], [800, 430]]),
+      drawing('double-rampe', 'Deux rampes', 'La main dessine une montée en deux temps.', 1625, [[1680, 430], [1790, 385], [1880, 385], [1970, 340], [2040, 340]]),
+      drawing('passerelle', 'Une passerelle', 'Le dernier vide attend son trait.', 2285, [[2340, 340], [2440, 340], [2560, 395], [2670, 430]]),
+    ],
+    hazards: [gear('pendule-1', 950, 378, 29, 'y', 39, 1.55), gear('roue-1', 1100, 408, 23, 'x', 22, 1.8, 1), spikes('piques-1', 1430, 404, 58), gear('roue-2', 2180, 315, 26, 'x', 42, 1.7, 2.1), gear('pendule-2', 2810, 400, 26, 'y', 29, 1.9, 0.4)],
+    stars: [p(1020, 302), p(2180, 216), p(2930, 375)], checkpoints: [p(840, 430), p(2080, 340), p(2715, 430)],
+  }),
+  wide({
+    id: 5, title: 'Les marches du danger', subtitle: 'Les lignes prennent de la hauteur, les roues aussi.', palette: 'terracotta', width: 3220,
+    start: p(160, 430), goal: p(3080, 430),
+    surfaces: [floor(-120, 540, 430), floor(890, 1230, 360), floor(1360, 1680, 360), floor(2040, 2390, 430), floor(2720, 3360, 430)],
+    drawings: [
+      drawing('marches', 'Un escalier', 'La main dessine les premières marches.', 485, [[540, 430], [600, 430], [600, 400], [665, 400], [665, 370], [735, 370], [735, 340], [810, 340], [890, 360]], 2.4),
+      drawing('pont-haut', 'Un passage en hauteur', 'Passe au-dessus des dents avec l’aide de la main.', 1625, [[1680, 360], [1760, 310], [1870, 310], [1960, 390], [2040, 430]]),
+      drawing('dernier-pont', 'Une dernière arche', 'La main dessine l’arche qui manque.', 2335, [[2390, 430], [2470, 370], [2610, 370], [2720, 430]]),
+    ],
+    hazards: [gear('roue-1', 1060, 335, 28, 'x', 58, 1.7), spikes('piques-1', 1440, 334, 58), gear('roue-du-bas', 1850, 414, 33, 'x', 32, 1.6), gear('roue-2', 2190, 405, 27, 'x', 58, 1.9, 1.2), gear('roue-du-vide', 2550, 450, 25, 'y', 18, 1.6), gear('pendule-3', 2880, 398, 26, 'y', 32, 1.8, 2.2), spikes('piques-2', 2970, 404, 48)],
+    stars: [p(1100, 230), p(1850, 255), p(3040, 280)], checkpoints: [p(930, 360), p(2080, 430), p(2770, 430)],
+  }),
+  wide({
+    id: 6, title: 'Le grand final', subtitle: 'Trois traits de la main et une dernière course entre les roues.', palette: 'plum', width: 3400,
+    start: p(160, 430), goal: p(3260, 430),
+    surfaces: [floor(-120, 560, 430), floor(900, 1260, 430), floor(1390, 1800, 430), floor(2170, 2460, 340), floor(2780, 3540, 430)],
+    drawings: [
+      drawing('premiere-arche', 'Une arche', 'Appelle la main pour lancer la traversée.', 505, [[560, 430], [650, 375], [810, 375], [900, 430]]),
+      drawing('escalier-final', 'Le grand escalier', 'La corniche a besoin de quelques marches.', 1745, [[1800, 430], [1860, 430], [1860, 400], [1920, 400], [1920, 370], [1990, 370], [1990, 340], [2170, 340]], 2.5),
+      drawing('rampe-finale', 'La rampe finale', 'Un dernier coup de crayon pour rejoindre les derniers pièges.', 2405, [[2460, 340], [2530, 340], [2620, 390], [2700, 390], [2780, 430]]),
+    ],
+    hazards: [gear('roue-depart', 385, 405, 25, 'x', 32, 1.7), gear('pendule-1', 1050, 388, 28, 'y', 31, 1.85), gear('pendule-2', 1515, 396, 26, 'y', 34, 1.65, 1.4), spikes('piques-1', 1650, 404, 48), gear('roue-haute', 2310, 315, 27, 'x', 42, 2, 2.5), gear('roue-finale', 2920, 407, 26, 'x', 40, 1.8, 1), spikes('piques-2', 3100, 404, 62), gear('pendule-final', 3220, 376, 25, 'y', 30, 1.6, 1.7)],
+    stars: [p(1040, 280), p(2110, 285), p(3180, 265)], checkpoints: [p(950, 430), p(2210, 340), p(2830, 430)],
+  }, 1.6),
+];
+
+const liftGate = (id: string, x: number, y = 430, height = 210): PlatformMechanism => ({
+  id, type: 'gate', title: 'La porte suspendue', prompt: 'Soulève la poignée dorée pour libérer le passage.',
+  from: p(x, y), to: p(x, y - 265), width: 32, height, speed: 205,
+});
+const ferry = (id: string, from: PlatformPoint, to: PlatformPoint, width = 132): PlatformMechanism => ({
+  id, type: 'platform', title: from.y === to.y ? 'Le passeur' : 'L’ascenseur de la ligne',
+  prompt: 'Monte sur le plateau, puis déplace sa poignée le long du rail.', from, to, width, speed: 150,
+});
+const parkGear = (hazard: Extract<PlatformHazard, { type: 'gear' }>, parkedY: number): PlatformMechanism => ({
+  id: `poignee-${hazard.id}`, type: 'gear', hazardId: hazard.id, title: 'La roue à soulever',
+  prompt: 'Soulève la roue avec sa poignée dorée et laisse-la en haut du rail.',
+  from: p(hazard.x, hazard.y), to: p(hazard.x, parkedY), width: hazard.r * 2, speed: 170,
+});
+
+/**
+ * Cooperation is part of the route: the long ferry gaps cannot be walked over,
+ * raised gates stay raised, and every ferry remains callable from either bank.
+ * The eighteen hand-drawn bridges are still supplied entirely by the player.
+ */
+function cooperativeCourse(source: PlatformLevel): PlatformLevel {
+  const level: PlatformLevel = {
+    ...source,
+    surfaces: source.surfaces.map(s => ({ a: { ...s.a }, b: { ...s.b } })),
+    hazards: source.hazards.map(h => ({ ...h })),
+    stars: source.stars.map(q => ({ ...q })),
+    checkpoints: source.checkpoints.map(q => ({ ...q })),
+    mechanisms: [],
+  };
+  const mechanisms = level.mechanisms!;
+  const wheel = (id: string) => level.hazards.find(h => h.id === id && h.type === 'gear') as Extract<PlatformHazard, { type: 'gear' }>;
+  const addFlag = (x: number, y: number) => level.checkpoints.push(p(x, y));
+  switch (level.id) {
+    case 1:
+      level.subtitle = 'Soulève la porte, dessine ton pont, puis fais traverser le petit bonhomme.';
+      level.surfaces[1].b.x = 1690;
+      mechanisms.push(liftGate('premiere-porte', 420), ferry('premier-passeur', p(1690, 430), p(1993, 430), 128));
+      addFlag(2050, 430);
+      break;
+    case 2:
+      level.subtitle = 'Une roue peut se garer en hauteur. À toi de choisir le tracé et le moment.';
+      level.surfaces[1].b.x = 1780;
+      mechanisms.push(parkGear(wheel('roue-sous-pont'), 200), ferry('passeur-des-dents', p(1780, 430), p(2075, 430)));
+      addFlag(2155, 430);
+      break;
+    case 3:
+      level.subtitle = 'Écarte le pendule et monte à bord : la main peut aussi te faire prendre de la hauteur.';
+      level.surfaces[1].b.x = 1980;
+      mechanisms.push(parkGear(wheel('pendule-1'), 160), ferry('ascenseur-oblique', p(1980, 430), p(2240, 290), 140));
+      level.surfaces.push(floor(2240, 2360, 290), { a: p(2360, 290), b: p(2475, 430) });
+      level.stars[0] = p(2300, 230);
+      addFlag(2300, 290);
+      break;
+    case 4:
+      level.subtitle = 'Fais accoster le plateau, soulève la porte, puis écarte la dernière roue.';
+      level.surfaces[1].b.x = 1850;
+      wheel('roue-1').x = 1710;
+      mechanisms.push(ferry('passeur-et-porte', p(1850, 430), p(2158, 430), 136), liftGate('porte-du-quai', 2240), parkGear(wheel('pendule-2'), 190));
+      addFlag(2195, 430);
+      break;
+    case 5:
+      level.subtitle = 'Dégage les roues, invente ta passerelle et ouvre la sortie du balcon.';
+      level.surfaces[1].b.x = 1905;
+      mechanisms.push(ferry('passeur-du-balcon', p(1905, 360), p(2224, 360)), parkGear(wheel('roue-du-bas'), 180), liftGate('porte-du-balcon', 3510));
+      addFlag(2290, 360);
+      break;
+    case 6:
+      level.subtitle = 'Le duo au complet : un trait, une roue à dégager, un passeur et la dernière porte.';
+      level.width = 5800;
+      level.goal = p(5660, 430);
+      level.surfaces[4].b.x = 4760;
+      level.surfaces.push(floor(5220, 5940, 430));
+      wheel('pendule-final').x = 5530;
+      const finalSpikes = level.hazards.find(h => h.id === 'piques-2');
+      if (finalSpikes?.type === 'spikes') { finalSpikes.x = 5360; finalSpikes.w = 70; }
+      level.stars[2] = p(5515, 245);
+      mechanisms.push(parkGear(wheel('roue-finale'), 180), ferry('passeur-final', p(4760, 430), p(5200, 430), 144), liftGate('derniere-porte', 5260, 430, 230));
+      addFlag(5320, 430);
+      break;
+  }
+  level.checkpoints.sort((a, b) => a.x - b.x);
+  return level;
+}
+
+export const PLATFORM_LEVELS: PlatformLevel[] = DRAWING_COURSES.map(cooperativeCourse);

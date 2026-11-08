@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": ".github/workflows/public-ci.yml",
+      "bytes": 715,
+      "sha256": "047f7a719b4d8c21959653c98187d930ff2bdc6a44677849a2ff1706d7582f1c"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 81,
+      "sha256": "4125dbf54ba2ca10e434bc4220c5ae0baba203c83d12f121c4a285d79e790eef"
+    },
+    {
+      "path": ".nvmrc",
+      "bytes": 3,
+      "sha256": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+    },
+    {
+      "path": "CREDITS.md",
+      "bytes": 2306,
+      "sha256": "018b61b0dac8108ca4be81921b28f89f0631aa8c52374ca5b84664df7200c004"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5114,
+      "sha256": "66c290d8062e09564c06676493ee29075aaa44699f4b12134930c059a34f66bf"
+    },
+    {
+      "path": "app/globals.css",
+      "bytes": 34738,
+      "sha256": "b647d5dea985d256e1f1e45bbc97c43bff10d8a95d58946fb8570d88acc32fae"
+    },
+    {
+      "path": "app/page.tsx",
+      "bytes": 44815,
+      "sha256": "1d4d1b3412a119a8189d75b3aa563c1ed7c308e0228be8eb0f483e19dbe10ee8"
+    },
+    {
+      "path": "components/trait/controls-config.module.css",
+      "bytes": 3415,
+      "sha256": "8d8c41786c22e6c017b6ec09fb6254cc662cb585394d3deda273fa3b990566c9"
+    },
+    {
+      "path": "components/trait/controls-config.tsx",
+      "bytes": 8742,
+      "sha256": "f932b509eed9115e0867c167d3624214c9517aee597bf88b227845f965807d48"
+    },
+    {
+      "path": "docs/BUILD.md",
+      "bytes": 4064,
+      "sha256": "d336cb9f2fdcdd8349aa161312e0d449959b0410be9f6d447ef76c50b3c96595"
+    },
+    {
+      "path": "docs/THIRD-PARTY-NOTICES.md",
+      "bytes": 5630,
+      "sha256": "bc22ff0e1addf46853a9e95597c6a77a2998fa5d37462a37121ee2855c7ea107"
+    },
+    {
+      "path": "lib/trait/audio.ts",
+      "bytes": 24880,
+      "sha256": "e52151161fea992b812abc7c971fa84698dc53d35d9a0348fd49dc65bf891a88"
+    },
+    {
+      "path": "lib/trait/cartoon-character.ts",
+      "bytes": 19631,
+      "sha256": "fe0720e6025e528b49134a4ea2c91483f2e085c0698bb1e39246791a9ce8c4c3"
+    },
+    {
+      "path": "lib/trait/companion.ts",
+      "bytes": 8423,
+      "sha256": "160e6ab0e9dac5297cdbf7489ab6860e8aa977072baa6737f1a811f3f1f5e813"
+    },
+    {
+      "path": "lib/trait/controls.ts",
+      "bytes": 4602,
+      "sha256": "1c70091790930749527be4c97b1bcedd66b9d0f92417309a5f69d868613abbbc"
+    },
+    {
+      "path": "lib/trait/hand.ts",
+      "bytes": 3496,
+      "sha256": "057979ad8d53dc91aceaccfd27ed155f4e770e6a6a15ef13f945f01e2ddcce82"
+    },
+    {
+      "path": "lib/trait/platform-drawing.ts",
+      "bytes": 4425,
+      "sha256": "ad5c632163b41557068e84c4aebac927dedbe68640710278e69848c5bb991641"
+    },
+    {
+      "path": "lib/trait/platform-levels.ts",
+      "bytes": 14450,
+      "sha256": "35807e648983971c89b954b6b289a88a84f3a6514ee4f90b12ad543362346896"
+    },
+    {
+      "path": "lib/trait/platform-mechanisms.ts",
+      "bytes": 11763,
+      "sha256": "5cf0db56deabe43c12443f86943bbf1c531533cab6f02a393abfc635cd3c6062"
+    },
+    {
+      "path": "lib/trait/platform-renderer.ts",
+      "bytes": 16751,
+      "sha256": "f09c158581c3ca46da08a7470eccf9650dc60a2e002b476f7427be067e431b0e"
+    },
+    {
+      "path": "lib/trait/platformer.ts",
+      "bytes": 20788,
+      "sha256": "ea301b2ed867c88c724da505bdfdef946e5145276f5d1b75c581f412aaa3e7f8"
+    },
+    {
+      "path": "lib/trait/progress.ts",
+      "bytes": 3419,
+      "sha256": "272886b9cb9026841cbb13a802df3f74b83200d5221953e9c4a629bf4304f397"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 56480,
+      "sha256": "87da24430686de8bf689d93f82fa27e2803f97744c31070d246dbf196f10c2a9"
+    },
+    {
+      "path": "package.json",
+      "bytes": 943,
+      "sha256": "713074bae368c0c4493ff752e2143ecb01c1465049bac3d3999150bac9f3e130"
+    },
+    {
+      "path": "public/drawing-hand.png",
+      "bytes": 1397450,
+      "sha256": "aca1ae45dac348b76d786bc6b01c6c0b1b38b2f4955e3e2c62f28e931a14db21"
+    },
+    {
+      "path": "public/favicon.svg",
+      "bytes": 377,
+      "sha256": "0c9b8c61ae67bc2636b48dc84189766900099250a1047328c9229b5d514721af"
+    },
+    {
+      "path": "scripts/public-app/index.html",
+      "bytes": 672,
+      "sha256": "6ed901a6370e0404a66332fb2837250b0a6951448f65fade7756096f9031b56c"
+    },
+    {
+      "path": "scripts/public-app/main.tsx",
+      "bytes": 264,
+      "sha256": "dd7fade709d1be3c3babb914c31795f3c69a26c1f82a2a72863dd10e19c3f608"
+    },
+    {
+      "path": "scripts/public-build.mjs",
+      "bytes": 3261,
+      "sha256": "22ff81b7908a6a137284dcc4aa899a75a7c486446606f15bba4bada455d04445"
+    },
+    {
+      "path": "scripts/public-test.mjs",
+      "bytes": 1920,
+      "sha256": "b6759e9532e0b7dbf625d88821500a103ee944436fd132b7e474f1cee1e9c288"
+    },
+    {
+      "path": "scripts/public-vite.config.mjs",
+      "bytes": 1705,
+      "sha256": "55e7f41e1a128679b8ad367645c6b49df9302a94a194ac1cc8f513d979487fff"
+    },
+    {
+      "path": "tests/companion.test.ts",
+      "bytes": 6262,
+      "sha256": "20ed1ee1ed9ec1b9325386ee62ea830cd4930910afd94f53703eb409e9932847"
+    },
+    {
+      "path": "tests/controls.test.ts",
+      "bytes": 1630,
+      "sha256": "4a679ba807d2aa48e6f1e67e5ced58ba2480cb0a3992687e6672001a2f4eb401"
+    },
+    {
+      "path": "tests/platform-mechanisms.test.ts",
+      "bytes": 11677,
+      "sha256": "026c060e1980504f3168e4c77935cf56d5eef1897141f2eacd0b91cb5592018c"
+    },
+    {
+      "path": "tests/progress.test.ts",
+      "bytes": 3953,
+      "sha256": "0aa60bfe3132a0fbd1f65fb583c955f97842903a9084941db40769f7103d8751"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 572,
+      "sha256": "22204f435c63595aaec9965a091a144da16be732365b2d5acaa008ddae643860"
+    }
+  ]
+}

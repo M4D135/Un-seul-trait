@@ -1,0 +1,29 @@
+name: Vérification du jeu
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Compiler le jeu autonome
+        run: node scripts/public-build.mjs --out work/public-dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: un-seul-trait-web
+          path: work/public-dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
