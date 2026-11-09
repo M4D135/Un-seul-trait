@@ -86,6 +86,6 @@ Les tests couvrent les constructions, les mécanismes, les collisions, les point
 | `components/trait/` | Configuration des commandes |
 | `scripts/public-*` | Entrée React et compilation autonome |
 
-Le workflow GitHub Actions vérifie les types, exécute les tests et fournit le build comme artefact téléchargeable. Il ne publie pas automatiquement le site.
+Le workflow « Vérification du jeu » vérifie les types, exécute les tests et fournit le build comme artefact téléchargeable. Le workflow « Publication linea.estrasse.fr » met le site en ligne sur https://linea.estrasse.fr à chaque push sur `main` : voir [deploy/README.md](deploy/README.md).
 
 Les détails de compilation sont dans [BUILD.md](docs/BUILD.md). Les références artistiques et les notices des dépendances sont dans [CREDITS.md](CREDITS.md) et [THIRD-PARTY-NOTICES.md](docs/THIRD-PARTY-NOTICES.md).
