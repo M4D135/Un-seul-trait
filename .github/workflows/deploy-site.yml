@@ -34,6 +34,8 @@ jobs:
         run: |
           set -euo pipefail
           test -s dist/index.html
+          # Domaine personnalisé si la branche sert aussi de source GitHub Pages.
+          printf 'linea.estrasse.fr\n' > dist/CNAME
           cd dist
           git init -q -b site
           git config user.name 'github-actions[bot]'

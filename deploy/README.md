@@ -26,6 +26,14 @@ Le script peut être relancé sans risque. Il sauvegarde le Caddyfile avant d'y 
 | Reprendre les mises à jour | `sudo systemctl start linea-update.timer` |
 | Désinstaller | `curl -fsSL https://raw.githubusercontent.com/M4D135/Un-seul-trait/main/deploy/install-vps.sh \| sudo bash -s -- uninstall` |
 
+## Variante sans serveur : GitHub Pages
+
+La branche `site` contient aussi un fichier `CNAME` et peut être servie par GitHub Pages :
+
+1. Dans le dépôt, **Settings → Pages** : source « Deploy from a branch », branche `site`, dossier `/ (root)`.
+2. Zone DNS OVH de `estrasse.fr` : remplacer l'enregistrement A `linea` par un **CNAME** `linea` vers `m4d135.github.io.` (avec le point final).
+3. Une fois le certificat émis par GitHub (quelques minutes à 1 h), cocher **Enforce HTTPS**.
+
 ## Configuration manuelle (Caddy dans Docker, Caddyfile importé, etc.)
 
 Copie le contenu de la branche `site` dans un dossier lisible par Caddy, puis ajoute ce bloc et recharge Caddy :
