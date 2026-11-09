@@ -37,10 +37,16 @@ CADDYFILE=${CADDYFILE:-/etc/caddy/Caddyfile}
 [ -f "$CADDYFILE" ] || die "Caddyfile introuvable : $CADDYFILE"
 case "$CADDYFILE" in *.json) die "Caddy est configuré en JSON ($CADDYFILE) : ajoute le site à la main (deploy/README.md)." ;; esac
 
-remove_block() {
+remove_block() {  # retire le bloc géré et la ligne vide qui le précède
   local tmp
   tmp=$(mktemp)
-  awk -v b="$MARK_BEGIN" -v e="$MARK_END" '$0 == b { skip = 1 } !skip { print } $0 == e { skip = 0 }' "$CADDYFILE" > "$tmp"
+  awk -v b="$MARK_BEGIN" -v e="$MARK_END" '
+    skip { if ($0 == e) skip = 0; next }
+    $0 == b { skip = 1; hold = 0; next }
+    hold { print ""; hold = 0 }
+    $0 == "" { hold = 1; next }
+    { print }
+    END { if (hold) print "" }' "$CADDYFILE" > "$tmp"
   cat "$tmp" > "$CADDYFILE"
   rm -f "$tmp"
 }
@@ -57,6 +63,11 @@ if [ "${1:-}" = uninstall ]; then
   rm -rf -- "$ROOT"
   say "$DOMAIN désinstallé."
   exit 0
+fi
+
+if ! grep -qxF "$MARK_BEGIN" "$CADDYFILE" \
+  && grep -qE "(^|[[:space:],/])${DOMAIN//./\\.}([[:space:],:{]|$)" "$CADDYFILE"; then
+  die "$CADDYFILE mentionne déjà $DOMAIN : je n'y touche pas, vérifie ce bloc à la main."
 fi
 
 missing=()
@@ -133,7 +144,7 @@ say "récupération du jeu compilé ($REPO, branche $BRANCH)"
 install -d -m 755 "$ROOT"
 systemctl start "$UNIT.service" || { journalctl -u "$UNIT" -n 20 --no-pager >&2 || true; die "échec du téléchargement."; }
 [ -s "$ROOT/current/index.html" ] || die "aucun index.html dans $ROOT/current."
-systemctl enable --now "$UNIT.timer" >/dev/null 2>&1
+systemctl enable --now "$UNIT.timer" >/dev/null
 say "version installée : $(readlink "$ROOT/current")"
 
 # 2. Bloc Caddy.
@@ -141,9 +152,6 @@ BACKUP=
 if grep -qxF "$MARK_BEGIN" "$CADDYFILE"; then
   say "bloc $DOMAIN déjà présent dans $CADDYFILE"
 else
-  if grep -qE "(^|[[:space:],/])${DOMAIN//./\\.}([[:space:],:{]|$)" "$CADDYFILE"; then
-    die "$CADDYFILE mentionne déjà $DOMAIN : je n'y touche pas, vérifie ce bloc à la main."
-  fi
   BACKUP="$CADDYFILE.bak-$(date +%Y%m%d-%H%M%S)"
   cp -a "$CADDYFILE" "$BACKUP"
   cat >> "$CADDYFILE" <<EOF
