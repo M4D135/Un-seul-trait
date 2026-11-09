@@ -197,6 +197,7 @@ function cooperativeCourse(source: PlatformLevel): PlatformLevel {
   addVerticalDetours(level);
   makeWalkingRoute(level);
   addDistinctObstacles(level);
+  addDrawingChoices(level);
   level.checkpoints.sort((a, b) => a.x - b.x);
   return level;
 }
@@ -283,20 +284,47 @@ function routeHeight(level: PlatformLevel, x: number): number {
   return heights.length ? Math.min(...heights) : 430;
 }
 
-/** Keep the same anchors/save identifiers while replacing every mandatory leap. */
+/** Author each pit independently. Teeth belong to one low bed, never to a
+ * wheel's travel envelope; the bridge itself remains entirely player drawn.
+ */
 function makeWalkingRoute(level: PlatformLevel): void {
-  const points = level.hazards.filter((hazard): hazard is Extract<PlatformHazard, { type: 'spikes' }> => hazard.type === 'spikes');
-  points.forEach((hazard, index) => {
-    const drawing = level.drawings[index === 0 ? 0 : 2];
-    const a = drawing.path[0], b = drawing.path[drawing.path.length - 1];
-    const high = Math.min(a.y, b.y) - (index === 0 ? 60 : 50), span = b.x - a.x;
-    drawing.path = [{ ...a }, p(a.x + span * 0.25, high), p(a.x + span * 0.75, high), { ...b }];
-    drawing.prompt = 'Dessine une arche au-dessus des pointes, puis marche sur ton trait.';
-    hazard.w = 84;
-    hazard.x = (a.x + b.x) * 0.5 - hazard.w / 2;
-    hazard.y = high + 28;
-    hazard.h = 26;
-  });
+  const arch = (index: number, height: number) => {
+    const drawing = level.drawings[index], a = drawing.path[0], b = drawing.path.at(-1)!;
+    const span = b.x - a.x;
+    drawing.path = [{ ...a }, p(a.x + span * .25, height), p(a.x + span * .75, height), { ...b }];
+  };
+  const bed = (id: string, x: number, y: number, width = 84) => {
+    const hazard = level.hazards.find(h => h.id === id);
+    if (hazard?.type === 'spikes') Object.assign(hazard, { x, y, w: width, h: 26 });
+  };
+  switch (level.id) {
+    case 1:
+      arch(0, 370); bed('piques-1', 964.5, 398);
+      break;
+    case 2:
+      arch(0, 370);
+      // The first pit contains the handled wheel only. The teeth occupy a
+      // separate pit, under the last bridge, over 2,500 units further along.
+      bed('piques-1', 3664, 352, 82);
+      break;
+    case 3:
+      arch(0, 280); arch(2, 280);
+      bed('piques-1', 2958, 420, 72); bed('piques-2', 3868.5, 308);
+      break;
+    case 4:
+      arch(0, 370); bed('piques-1', 1006, 398);
+      break;
+    case 5:
+      arch(0, 300); arch(2, 380); bed('piques-1', 1138, 328);
+      // A single visible machine owns this last pit. The old teeth and wheel
+      // occupied the same pixels and offered no intelligible extra decision.
+      level.hazards = level.hazards.filter(h => h.id !== 'piques-2');
+      break;
+    case 6:
+      arch(0, 370); arch(2, 290);
+      bed('piques-1', 1126, 398); bed('piques-2', 4150, 318);
+      break;
+  }
   const handledWheels = new Set((level.mechanisms ?? []).flatMap(m => m.type === 'gear' ? [m.hazardId] : []));
   for (const hazard of level.hazards) {
     if (hazard.type !== 'gear' || handledWheels.has(hazard.id) || hazard.y >= 440) continue;
@@ -310,6 +338,113 @@ function makeWalkingRoute(level: PlatformLevel): void {
   if (level.id === 1) level.subtitle = 'Soulève la porte, dessine une arche et baisse-toi sous les roues.';
   if (level.id === 2) level.subtitle = 'Trace au-dessus des pointes et glisse sous les roues en te baissant.';
   if (level.id === 6) level.subtitle = 'Un dernier chemin à pied : arches, roues, passeur et porte à ouvrir ensemble.';
+}
+
+/** A route card changes a physical corridor, never builds it. The first route
+ * remains the reference solution for saves and full-course regression tests.
+ * Each generous allowance tolerates a finger-drawn curve instead of requiring
+ * the exact guide. No choice adds a jump or an automatically moving mechanism.
+ */
+function addDrawingChoices(level: PlatformLevel): void {
+  const contour = (drawing: DrawingObstacle, y: number, shoulder = .25) => {
+    const a = drawing.path[0], b = drawing.path.at(-1)!, span = b.x - a.x;
+    return [{ ...a }, p(a.x + span * shoulder, y), p(b.x - span * shoulder, y), { ...b }];
+  };
+  const allowance = (path: PlatformPoint[]) => Math.ceil((path.slice(1).reduce((length, point, index) =>
+    length + Math.hypot(point.x - path[index].x, point.y - path[index].y), 0) * 1.4 + 80) / 10) * 10;
+  const choice = (id: string, label: string, hint: string, path: PlatformPoint[]) => ({
+    id, label, hint, path: path.map(point => ({ ...point })), inkLimit: allowance(path),
+  });
+  const setChoices = (index: number, choices: NonNullable<DrawingObstacle['choices']>, title: string, prompt: string) => {
+    const drawing = level.drawings[index];
+    drawing.choices = choices;
+    drawing.path = choices[0].path.map(point => ({ ...point }));
+    drawing.inkLimit = choices[0].inkLimit;
+    drawing.title = title; drawing.prompt = prompt;
+  };
+  const optionalHighStar = (index: number, star: number, height: number, shortLabel: string) => {
+    const drawing = level.drawings[index], short = drawing.path.map(point => ({ ...point }));
+    const high = contour(drawing, height, .30), centre = (high[1].x + high[2].x) / 2;
+    setChoices(index, [
+      choice('etoile', 'Vers l’étoile', 'Monte au-dessus de la fosse pour prendre l’étoile, puis redescends sur la rive.', high),
+      choice('court', shortLabel, 'Un trajet plus bas et plus court. L’étoile reste sur le détour supérieur.', short),
+    ], 'Deux chemins, une étoile', 'Choisis ton détour : prendre l’étoile en hauteur ou rejoindre directement la rive.');
+    level.stars[star] = p(centre, height - 30);
+  };
+  const routePress = (drawingIndex: number, id: string, x: number, y: number, highY: number) => {
+    const drawing = level.drawings[drawingIndex], low = drawing.path.map(point => ({ ...point }));
+    const high = contour(drawing, highY, .30);
+    level.mechanisms!.push({
+      id, type: 'gate', appearance: 'press', title: 'La presse du raccourci',
+      prompt: 'Le tracé bas passe sous la presse : relève sa poignée avant de traverser.',
+      from: p(x, y), to: p(x, 145), width: 72, height: 90, speed: 520,
+    });
+    setChoices(drawingIndex, [
+      choice('presse', 'Sous la presse', 'Un trait court ; soulève la presse avant de passer dessous.', low),
+      choice('dessus', 'Par-dessus', 'Une grande arche évite la presse. Garde une descente douce vers la rive.', high),
+    ], 'La presse ou le détour', 'Observe la presse : relève-la pour le chemin bas, ou dessine au-dessus.');
+  };
+  switch (level.id) {
+    case 1:
+      optionalHighStar(0, 0, 235, 'Arche courte');
+      level.subtitle = 'Un premier choix : l’arche courte ou le détour jusqu’à l’étoile.';
+      break;
+    case 2: {
+      const drawing = level.drawings[0];
+      setChoices(0, [
+        choice('haut', 'Au-dessus', 'La roue reste au fond. Trace une arche suffisamment haute pour la contourner.', drawing.path),
+        choice('roue', 'Roue relevée', 'Relève d’abord la roue avec sa poignée, puis trace un pont presque horizontal.', [drawing.path[0], drawing.path.at(-1)!]),
+      ], 'Passer ou déplacer', 'La roue peut rester en bas si tu passes au-dessus, ou être relevée pour libérer un pont bas.');
+      optionalHighStar(2, 1, 220, 'Rampe courte');
+      level.subtitle = 'Passer au-dessus de la roue ou la relever ; prendre ensuite le détour de l’étoile.';
+      break;
+    }
+    case 3: {
+      const drawing = level.drawings[0], wheel = level.hazards.find(h => h.id === 'roue-du-vide');
+      if (wheel?.type === 'gear') { wheel.y = 350; wheel.range = 45; wheel.speed = .85; }
+      setChoices(0, [
+        choice('haut', 'Grande arche', 'Passe au-dessus de toute la course de la roue suspendue.', drawing.path),
+        choice('bas', 'Passage baissé', 'Un pont horizontal passe dessous. Reste baissé jusqu’à avoir dépassé le rail.', [drawing.path[0], drawing.path.at(-1)!]),
+      ], 'Deux côtés du rail', 'La roue coupe la hauteur du personnage debout : passe au-dessus, ou baisse-toi sur un pont bas.');
+      // Keep the pressure press and the next moving saw visibly separate.
+      const wheelAfterPress = level.hazards.find(h => h.id === 'roue-2');
+      if (wheelAfterPress?.type === 'gear') { wheelAfterPress.x = 3600; wheelAfterPress.range = 20; }
+      level.subtitle = 'Choisis le dessus ou le passage baissé, puis prépare l’ascenseur et la presse.';
+      break;
+    }
+    case 4: {
+      routePress(1, 'presse-des-deux-chemins', 3060, 385, 245);
+      const quaySaw = level.hazards.find(h => h.id === 'roue-1');
+      if (quaySaw?.type === 'gear') quaySaw.x = 1745;
+      level.subtitle = 'Le pont court exige de relever la presse ; une arche haute permet de la contourner.';
+      break;
+    }
+    case 5: {
+      const middle = level.drawings[1], last = level.drawings[2];
+      setChoices(1, [
+        choice('haut', 'Le balcon', 'Le passage haut conserve l’étoile et laisse la roue sous tes pieds.', middle.path),
+        choice('roue', 'La pente directe', 'Relève la roue centrale, puis trace une pente douce vers la rive. Tu passes sous l’étoile.', [middle.path[0], middle.path.at(-1)!]),
+      ], 'Le balcon ou l’atelier', 'Reste en hauteur pour l’étoile, ou dégage la roue et descends directement.');
+      const wheel = level.hazards.find(h => h.id === 'roue-du-vide');
+      if (wheel?.type === 'gear') {
+        wheel.y = 424; wheel.range = 0;
+        level.mechanisms!.push(parkGear(wheel, 230));
+      }
+      const sawAfterPress = level.hazards.find(h => h.id === 'roue-2');
+      if (sawAfterPress?.type === 'gear') { sawAfterPress.x = 3710; sawAfterPress.range = 40; }
+      setChoices(2, [
+        choice('haut', 'Petite arche', 'Laisse la roue dans sa fosse et passe au-dessus.', last.path),
+        choice('roue', 'Pont dégagé', 'Monte la roue au sommet du rail, puis dessine un pont droit.', [last.path[0], last.path.at(-1)!]),
+      ], 'Une roue, deux solutions', 'Cette fosse contient une seule roue : passe au-dessus ou dégage-la avec la main.');
+      level.subtitle = 'Un balcon pour l’étoile, une pente après avoir dégagé la roue, puis une dernière fosse à résoudre.';
+      break;
+    }
+    case 6:
+      optionalHighStar(0, 0, 230, 'Arche courte');
+      routePress(1, 'presse-du-choix-final', 3110, 385, 245);
+      level.subtitle = 'Compose ton parcours : étoile, presse à contourner ou à soulever, puis passeur et porte finale.';
+      break;
+  }
 }
 
 export const PLATFORM_LEVELS: PlatformLevel[] = DRAWING_COURSES.map(cooperativeCourse);

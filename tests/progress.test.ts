@@ -47,17 +47,26 @@ test('adventure migration keeps each level isolated and ignores unrelated keys',
   assert.equal(Object.keys(all).length,2);assert.deepEqual(readAdventure(null,PLATFORM_LEVELS),{});
 });
 
-test('long valid freehand passages keep every committed point after save and reload',()=>{
+test('dense freehand input is stabilised once and every committed point survives save and reload',()=>{
   const level=PLATFORM_LEVELS[0],world=createWorld(level),drawing=level.drawings[0];
   const a=drawing.path[0],b=drawing.path.at(-1)!;
   world.player.x=drawing.triggerX;
   assert(updateWorld(world,level,{left:false,right:false,crouch:false,draw:true},1/60).includes('draw-start'));
   assert(beginPlayerStroke(world,level,a).ok);
-  // A small, continuous hand tremor is legal and survives the 1.25-unit simplifier.
-  for(let i=1;i<2200;i++)appendPlayerStroke(world,level,{x:a.x+(b.x-a.x)*i/2200,y:a.y+(i%2?2:-2)});
+  // Preserve an intentional arch while removing a small, dense finger tremor.
+  for(let i=1;i<2200;i++){
+    const t=i/2200;
+    appendPlayerStroke(world,level,{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t-35*Math.sin(Math.PI*t)+(i%2?2:-2)});
+  }
   appendPlayerStroke(world,level,b);
   assert(finishPlayerStroke(world,level).ok);
-  assert(world.constructions[drawing.id].length>2048);
+  const committed=world.constructions[drawing.id];
+  assert(committed.length>2&&committed.length<100,'the finger tremor is not saved as thousands of tiny zigzags');
+  assert.deepEqual(committed[0],a);assert.deepEqual(committed.at(-1),b);
+  assert(committed.some(point=>{
+    const t=(point.x-a.x)/(b.x-a.x),baseline=a.y+(b.y-a.y)*t;
+    return baseline-point.y>30;
+  }),'the deliberate arch survives stabilisation');
   const saved=saveProgress(world,level),restored=restoreProgress(JSON.parse(JSON.stringify(saved)),level)!;
   assert.deepEqual(restored.drawn,[drawing.id]);
   assert.deepEqual(restored.constructions[drawing.id],world.constructions[drawing.id]);

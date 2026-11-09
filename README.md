@@ -2,17 +2,21 @@
 
 **Dessine le passage. Attrape le décor. Avance avec un petit personnage qui a son caractère.**
 
-Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.3.0** occupe toute la fenêtre : scène continue, commandes intégrées dans les coins, caméra fluide, gestes et disputes, oiseaux et mécanismes à déplacer à la main.
+Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.4.0** ajoute des choix de parcours, un dessin reprenable et des oiseaux articulés au rythme plus calme. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et mécanismes à déplacer à la main.
 
 **Projet de fan non officiel.** Le personnage est redessiné en contours vectoriels; la main est une image générée au rendu photographique. La voix utilise 16 très courts fragments originaux. Les origines exactes, traitements et limites sont dans [CREDITS.md](CREDITS.md).
 
 ## Jouer sans compiler
 
-Télécharge **Un-seul-trait-1.3.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger.
+Télécharge **Un-seul-trait-1.4.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger.
 
 ## Un geste pour dessiner, un geste pour déplacer
 
-Approche un passage manquant : les ancres **A et B** apparaissent. Pose le doigt ou la souris sur l’une, trace jusqu’à l’autre puis relâche. Le terrain suit ton dessin. Les deux sens fonctionnent, **A → B** et **B → A**, sans appuyer sur E. Tu peux effacer un essai ou redessiner un passage; l’ancien pont reste praticable tant que son remplacement n’est pas validé.
+Approche un passage manquant : les ancres **A et B** apparaissent. Pose le doigt ou la souris sur l’une et trace vers l’autre. Les deux sens fonctionnent, **A → B** et **B → A**, sans appuyer sur E. Si tu lèves le doigt avant l’arrivée, le brouillon reste en place : reprends sur son extrémité dorée pour continuer. Le passage devient praticable lorsque le trait rejoint l’autre ancre et que tu relâches.
+
+La palette de dessin contient **Guide** pour afficher ou masquer le trajet indicatif, **Reculer** pour retirer la dernière portion, **Effacer** pour recommencer le brouillon et **Fermer** pour abandonner l’essai. Le guide ne construit rien. Un léger lissage atténue les tremblements du doigt en conservant les pentes et les courbes voulues. L’encre disponible laisse de la marge autour de chaque parcours ; si le détour est trop long, tu peux le raccourcir sans perdre le reste du brouillon.
+
+Tu peux redessiner un passage déjà construit. L’ancien pont reste praticable tant que son remplacement n’est pas validé ; changer de choix, annuler un essai ou manquer le raccord ne le supprime pas. Le choix et le nouveau terrain ne sont enregistrés qu’à la validation.
 
 Pour refaire un passage dont l’autre ancre est hors champ, utilise le petit crayon contextuel **Redessiner** : il cadre les deux points avant le geste. **E** reste un raccourci facultatif pour ouvrir le dessin.
 
@@ -34,15 +38,30 @@ Sur mobile, **← →** occupent le coin inférieur gauche. Au coin inférieur d
 
 Le menu **Commandes** propose **deux touches par action** et empêche les doublons. Les commandes personnalisées sont conservées. Le jeu utilise toute la fenêtre; un bouton plein écran permet aussi de demander au navigateur de masquer son interface. Les menus restent accessibles par-dessus la scène.
 
-## Six parcours vivants
+## Six parcours et neuf décisions de chemin
 
-Dix-huit passages sont dessinés par le joueur. Des roues, scies, piques, pendules, portes et presses demandent d’observer et de manipuler le décor. Des passeurs et ascenseurs transportent réellement les pieds du personnage. Des oiseaux se posent sur la ligne, regardent, s’envolent à l’approche et reviennent après un délai.
+Dix-huit passages sont dessinés par le joueur. **Neuf de ces passages proposent deux choix, soit dix-huit variantes de parcours**. Les cartes permettent de préparer une solution ; tu dois ensuite dessiner toi-même le passage.
+
+| Situation | Deux approches possibles |
+| --- | --- |
+| Roue dans une fosse | Tracer au-dessus, ou relever la roue et dessiner un pont bas |
+| Roue suspendue | Passer en hauteur, ou rester baissé sur le chemin inférieur |
+| Presse du raccourci | La soulever pour suivre le trajet court, ou dessiner une arche au-dessus |
+| Étoile en hauteur | Construire le détour qui la rejoint, ou prendre le raccourci inférieur |
+
+Ces choix modifient réellement le terrain, les manipulations nécessaires ou les étoiles accessibles. Les scies et les piques occupent des obstacles distincts ; les presses restent lisibles à côté des dangers mobiles. Les passeurs et ascenseurs transportent les pieds du personnage, toujours sans saut.
+
+## Un décor animé qui laisse respirer le jeu
+
+Les oiseaux partagent une même silhouette articulée au sol et en vol. Ils observent, préparent le décollage, battent des ailes puis suivent des courbes avec accélération et freinage. Avant de se poser, ils relèvent les ailes, ouvrent la queue et tendent les pattes ; le corps amortit le contact avant de replier les ailes. Ils tournent la tête, clignent des yeux, picorent ou lissent leurs plumes pendant de longues pauses.
+
+Les départs volontaires sont espacés et limités dans une même zone. Les oiseaux hors champ ne lancent pas de nouveaux vols décoratifs, et les trajets sont vérifiés contre les surfaces et les dangers. L’approche du personnage ou un toucher peut déclencher leur fuite. Les animations décoratives n’interviennent pas dans les collisions du personnage.
 
 Le personnage regarde le problème, appelle le dessinateur, montre le passage et proteste par petites séquences variées. Les gestes cèdent immédiatement à la marche, à la flexion et aux chutes. Les 16 réactions originales sont choisies par contexte sans répéter les cinq dernières prises; la bouche suit le son effectivement lu.
 
 La caméra suit le déplacement sans recentrer les ponts déjà construits. Elle prépare les points d’un passage manquant et reste exactement fixe pendant le dessin. Les commandes flottent sur le décor, avec une marge de cadrage pour ne pas cacher le trait sous les pouces.
 
-Les drapeaux servent de points de reprise. Les dessins validés, étoiles et mécanismes sont sauvegardés dans le navigateur. Le retour après une chute ou un rechargement reprend au dernier drapeau. Les éclaboussures rouges peuvent être remplacées par des particules blanches dans les réglages.
+Les drapeaux servent de points de reprise. Les dessins validés, leurs choix de parcours, les étoiles et les mécanismes sont sauvegardés dans le navigateur. Le retour après une chute ou un rechargement reprend au dernier drapeau. Les ponts des anciennes sauvegardes restent conservés. Les éclaboussures rouges peuvent être remplacées par des particules blanches dans les réglages.
 
 ## Sources et développement
 
@@ -68,16 +87,17 @@ Le build génère `dist/index.html` et `dist/offline-play.html`. Aucun compte, c
 | `app/page.tsx` / `app/globals.css` | Interface plein écran, menus et entrées tactiles/clavier |
 | `lib/trait/camera.ts` | Suivi continu et cadrage des gestes |
 | `lib/trait/platformer.ts` / `platform-mechanisms.ts` | Simulation, collisions et mécanismes manuels |
+| `lib/trait/platform-drawing.ts` / `components/trait/drawing-palette.tsx` | Tracé libre, lissage, choix de chemin, guide et outils de reprise |
 | `lib/trait/platform-levels.ts` | Parcours, ascenseurs, obstacles et points de reprise |
 | `lib/trait/platform-renderer.ts` | Terrain, dangers, poignées et raccords au personnage |
 | `lib/trait/cartoon-character.ts` / `companion.ts` | Silhouettes et petites scènes gestuelles |
-| `lib/trait/ambient-life.ts` | Oiseaux et détails du décor |
+| `lib/trait/ambient-life.ts` / `ambient-bird-renderer.ts` | Comportements, trajectoires et silhouettes articulées des oiseaux |
 | `lib/trait/audio.ts` / `original-media.ts` | Voix originales, sélection et synchronisation de la bouche |
 | `lib/trait/hand.ts` | Main photographique ancrée au crayon |
 | `lib/trait/controls.ts` / `progress.ts` | Configuration et sauvegardes |
 | `public/*-manifest.json` | Provenance des médias et définition réelle de la main |
 
-Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile.
+Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Les contrôles ajoutés pour les chemins vérifient la reprise du trait dans les deux sens, l’annulation partielle, le respect de l’encre et les conséquences physiques de chaque variante. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile.
 
 Le workflow **Vérification du jeu** contrôle les types, les tests et le build. Le workflow **Publication linea.estrasse.fr** met le site en ligne sur https://linea.estrasse.fr à chaque push sur `main` : voir [deploy/README.md](deploy/README.md).
 

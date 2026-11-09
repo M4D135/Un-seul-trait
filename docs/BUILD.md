@@ -1,4 +1,4 @@
-# Compilation autonome — version 1.3.0
+# Compilation autonome — version 1.4.0
 
 ## Prérequis
 
@@ -42,21 +42,24 @@ La compilation remplace `__TRAIT_HD_HAND_ASSET__` et `__TRAIT_ORIGINAL_AUDIO_ASS
 
 `scripts/public-test.mjs` repère les fichiers `tests/**/*.test.ts` et `.spec.ts`, puis les compile avec TypeScript en CommonJS, cible ES2022, dans un dossier temporaire. Node exécute les tests compilés ; le dossier est supprimé à la fin, même en cas d’échec. Cela permet de conserver les imports TypeScript relatifs du projet sans ajouter de transpileur d’exécution.
 
-Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. Ils ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
+Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. La suite complète de la version 1.4.0 passe ses **90 tests**. Elle comprend **14 tests sur les oiseaux**, **10 tests sur les choix, la reprise du dessin et les marches franchissables**, et **6 tests sur les conséquences physiques des énigmes**. Ces contrôles ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
 
-Pour vérifier l’interface de la version 1.3.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
+Pour vérifier l’interface de la version 1.4.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
 
 - La scène et les commandes restent dans le viewport ; le geste de jeu ne fait pas défiler la page.
 - Les flèches sont à gauche, baisser et se redresser à droite ; les boutons restent accessibles avec les zones réservées aux encoches et à la barre d’accueil.
-- Le trait commence directement depuis A ou B, se valide à l’autre ancre et peut être effacé ou annulé. E reste facultatif.
+- Le trait commence directement depuis A ou B et se valide à l’autre ancre. Un lever de doigt intermédiaire conserve le brouillon, reprenable sur son extrémité dans les deux sens. E reste facultatif.
+- Les cartes de parcours ne construisent aucun terrain. Le guide peut être masqué, **Reculer** retire uniquement la fin du brouillon, et une annulation ou une validation refusée conserve le dernier pont valide.
+- Les variantes basse et haute changent réellement le passage : poignée à soulever, flexion nécessaire, presse contournée ou étoile laissée sur le détour. La jauge d’encre accompagne le tracé sans obliger à recopier exactement le guide.
 - Les menus possèdent leur propre défilement et un bouton de fermeture accessible ; les réglages restent disponibles en plein écran.
-- Pendant un geste, caméra et zoom sont immobiles. Une rotation d’écran interrompt proprement le trait non validé et conserve le dernier pont valide.
+- Pendant un geste, caméra et zoom sont immobiles. Une rotation d’écran interrompt proprement le geste, conserve le brouillon reprenable à son extrémité et garde le dernier pont valide.
 - Les poignées se déplacent uniquement pendant une prise directe; relâcher interrompt le mouvement, y compris celui d’un ascenseur.
+- Les oiseaux préparent leur envol, tournent sans inversion brusque du profil, freinent avant le posé et gardent les pieds sur la ligne au repos. Observer un cycle en mouvement, ainsi que la proximité d’une scie, d’une presse et d’un plafond bas ; une simple image fixe ne valide pas le rythme.
 - Après une action du joueur, vérifier les réactions audio, le volume, la pause et les éventuels replis de lecture du navigateur. La préparation des extraits a vérifié leurs formats et durées ; elle n’a pas comporté de validation auditive par les outils d’étude.
 
 ## Fichier hors ligne
 
-Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.3.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
+Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.4.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
 
 Une adresse `file:` ne possède pas les mêmes garanties de stockage qu’une adresse HTTP. Si le navigateur refuse `localStorage`, la partie fonctionne sans sauvegarde persistante. Le plein écran peut être restreint par le navigateur. **Extraits originaux** est le mode audio par défaut ; **Grammelot synthétique** et **Italien synthétique** restent des options. Le mode italien ne propose que les voix locales déjà installées.
 
@@ -69,7 +72,7 @@ npm run public:build
 npm run public:export -- /chemin/absolu/vers/un-dossier-vide
 ```
 
-Le premier build est rangé dans `work/public-dist/`. L’exporteur suit les imports actifs depuis `app/page.tsx`, ajoute les tests et copie une liste explicite de fichiers de build, de documentation et de médias retenus pour le jeu. Il refuse un dossier de destination non vide et n’initialise aucun dépôt distant.
+Le premier build est rangé dans `work/public-dist/`. L’exporteur suit les imports actifs depuis `app/page.tsx`, ajoute automatiquement les tests et copie une liste explicite de fichiers de build, de documentation et de médias retenus pour le jeu. Le rendu articulé des oiseaux, la palette de dessin et les nouveaux tests sont ainsi inclus par leurs imports et par la découverte de `tests/`. Il refuse un dossier de destination non vide et n’initialise aucun dépôt distant.
 
 L’export ne reprend ni historique Git, variables d’environnement, identifiants d’hébergement, configuration de serveur, connecteurs, captures d’étude ni composants inutilisés. Les seuls médias originaux sélectionnés pour le jeu sont décrits par leurs manifestes ; les épisodes complets et les planches de travail restent exclus. `PUBLIC-MANIFEST.json` énumère chaque fichier exporté avec sa taille et son empreinte SHA-256, pour comparer précisément les contenus avant publication.
 

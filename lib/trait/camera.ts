@@ -1,4 +1,4 @@
-import { getAvailableMechanism, type DrawingObstacle, type GameWorld, type PlatformLevel } from './platformer';
+import { getAvailableMechanism, getDrawingPlan, type DrawingObstacle, type GameWorld, type PlatformLevel } from './platformer';
 
 export type CameraFrame = { cameraX: number; scale: number; offsetY: number };
 export type CameraState = CameraFrame & { levelId: number | null; width: number; height: number; playerX: number };
@@ -11,7 +11,10 @@ const clamp = (value: number, low: number, high: number) => Math.max(low, Math.m
 export const createCamera = (): CameraState => ({ cameraX: 0, scale: 1, offsetY: 0, levelId: null, width: 0, height: 0, playerX: 0 });
 
 function nearbyDrawing(world: GameWorld, level: PlatformLevel): DrawingObstacle | null {
-  if (world.activeDrawing) return level.drawings.find(d => d.id === world.activeDrawing?.id) ?? null;
+  if (world.activeDrawing) {
+    const active = level.drawings.find(d => d.id === world.activeDrawing?.id);
+    return active ? getDrawingPlan(world, active) : null;
+  }
   let nearest: DrawingObstacle | null = null, distance = Infinity;
   for (const drawing of level.drawings) {
     const first = drawing.path[0], last = drawing.path.at(-1);
@@ -21,7 +24,7 @@ function nearbyDrawing(world: GameWorld, level: PlatformLevel): DrawingObstacle 
     // Prepare the view before A becomes interactive. Keep its zoom across the
     // whole bridge, including after construction and while returning over it.
     if (dx > 260 || Math.abs(world.player.y - Math.min(first.y, last.y)) > 210) continue;
-    if (dx < distance) { nearest = drawing; distance = dx; }
+    if (dx < distance) { nearest = getDrawingPlan(world, drawing); distance = dx; }
   }
   return nearest;
 }
@@ -32,7 +35,8 @@ function sceneBand(level: PlatformLevel, short: boolean): { top: number; bottom:
   // slope or bridge enters the interaction radius on a landscape phone.
   let top = Math.min(160, level.start.y - 150);
   for (const surface of level.surfaces) top = Math.min(top, surface.a.y - 145, surface.b.y - 145);
-  for (const drawing of level.drawings) for (const point of drawing.path) top = Math.min(top, point.y - 135);
+  for (const drawing of level.drawings) for (const path of [drawing.path, ...(drawing.choices ?? []).map(choice => choice.path)])
+    for (const point of path) top = Math.min(top, point.y - 135);
   for (const mechanism of level.mechanisms ?? []) {
     const handleOffset = mechanism.type === 'platform' ? -25 : mechanism.type === 'gate'
       ? -mechanism.height / 2 + 20 : -mechanism.width / 2 - 22;

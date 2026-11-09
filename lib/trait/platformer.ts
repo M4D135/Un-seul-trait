@@ -1,4 +1,4 @@
-import { preparePlayerStroke, STROKE_ANCHOR_RADIUS } from './platform-drawing';
+import { preparePlayerStroke, strokeLength, STROKE_ANCHOR_RADIUS } from './platform-drawing';
 import { advanceMechanisms, createMechanismStates, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
 import type { HandInteraction, MechanismState, PlatformMechanism } from './platform-mechanisms';
 export { beginMechanismInteraction, endMechanismInteraction, getAvailableMechanism, getMechanismHandlePosition, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
@@ -17,6 +17,14 @@ export type PlatformHazard =
   }
   | { id: string; type: 'spikes'; x: number; y: number; w: number; h: number };
 
+export type DrawingChoice = {
+  id: string;
+  label: string;
+  hint: string;
+  path: PlatformPoint[];
+  inkLimit?: number;
+};
+
 export type DrawingObstacle = {
   id: string;
   title: string;
@@ -25,6 +33,9 @@ export type DrawingObstacle = {
   /** Reference route: only its endpoints constrain the player's own construction. */
   path: PlatformPoint[];
   duration: number;
+  /** Authored alternatives are planning guides, never automatically built geometry. */
+  choices?: DrawingChoice[];
+  inkLimit?: number;
 };
 
 export type PlatformLevel = {
@@ -79,9 +90,11 @@ export type GameWorld = {
   drawn: string[];
   /** Validated custom paths; these exact points are displayed and used for collisions. */
   constructions: Record<string, PlatformPoint[]>;
+  /** Only committed choices are saved. Changing a plan never deletes an existing bridge. */
+  drawingChoices: Record<string, string>;
   mechanisms: Record<string, MechanismState>;
   handInteraction: HandInteraction | null;
-  activeDrawing: { id: string; progress: number; path: PlatformPoint[]; started: boolean } | null;
+  activeDrawing: { id: string; progress: number; path: PlatformPoint[]; started: boolean; choiceId?: string; anchorRadius?: number } | null;
   collected: number[];
   /** -1 means the initial spawn; otherwise indexes level.checkpoints. */
   checkpointIndex: number;
@@ -116,7 +129,7 @@ export function createWorld(level: PlatformLevel): GameWorld {
   return {
     levelId: level.id,
     player: { ...level.start, vx: 0, vy: 0, facing: 1, grounded: true, crouching: false, travel: 0 },
-    time: 0, phase: 'playing', drawn: [], constructions: {}, activeDrawing: null, collected: [],
+    time: 0, phase: 'playing', drawn: [], constructions: {}, drawingChoices: {}, activeDrawing: null, collected: [],
     mechanisms: createMechanismStates(level), handInteraction: null,
     checkpointIndex: -1, deaths: 0, particles: [], deathTimer: 0, invulnerable: 0,
     completedAt: null, lastDeathCause: null,
@@ -152,40 +165,70 @@ export function getWorldSurfaces(world: GameWorld, level: PlatformLevel): Platfo
   return surfaces;
 }
 
+export function getDrawingChoice(world: GameWorld, drawing: DrawingObstacle): DrawingChoice | null {
+  const selected = world.activeDrawing?.id === drawing.id
+    ? world.activeDrawing.choiceId ?? world.drawingChoices[drawing.id]
+    : world.drawingChoices[drawing.id];
+  return drawing.choices?.find(choice => choice.id === selected) ?? drawing.choices?.[0] ?? null;
+}
+
+export function getDrawingPlan(world: GameWorld, drawing: DrawingObstacle): DrawingObstacle {
+  const choice = getDrawingChoice(world, drawing);
+  return choice ? { ...drawing, path: choice.path, prompt: choice.hint, inkLimit: choice.inkLimit ?? drawing.inkLimit } : drawing;
+}
+
 export function getAvailableDrawing(world: GameWorld, level: PlatformLevel): DrawingObstacle | null {
   if (world.phase !== 'playing' || !world.player.grounded) return null;
   let nearest: DrawingObstacle | null = null;
   let nearestDistance = Infinity;
   for (const drawing of level.drawings) {
     if (drawing.path.length < 2) continue;
-    const start = drawing.path[0], end = drawing.path[drawing.path.length - 1];
-    const leftDistance = Math.abs(world.player.y - start.y) <= 90
-      ? Math.min(Math.abs(world.player.x - drawing.triggerX), Math.abs(world.player.x - start.x)) : Infinity;
-    const rightDistance = Math.abs(world.player.y - end.y) <= 90 ? Math.abs(world.player.x - end.x) : Infinity;
-    const delta = Math.min(leftDistance, rightDistance);
+    const routes = drawing.choices?.length ? drawing.choices.map(choice => choice.path) : [drawing.path];
+    const delta = Math.min(...routes.map(path => {
+      const start = path[0], end = path[path.length - 1];
+      const leftDistance = Math.abs(world.player.y - start.y) <= 90
+        ? Math.min(Math.abs(world.player.x - drawing.triggerX), Math.abs(world.player.x - start.x)) : Infinity;
+      const rightDistance = Math.abs(world.player.y - end.y) <= 90 ? Math.abs(world.player.x - end.x) : Infinity;
+      return Math.min(leftDistance, rightDistance);
+    }));
     if (delta <= 105 && delta < nearestDistance) {
-      nearest = drawing;
+      nearest = getDrawingPlan(world, drawing);
       nearestDistance = delta;
     }
   }
   return nearest;
 }
 
-export type PlayerStrokeResult = { ok: boolean; message: string };
+export type PlayerStrokeResult = { ok: boolean; message: string; incomplete?: boolean };
 
 function currentDrawing(world: GameWorld, level: PlatformLevel): DrawingObstacle | null {
   if (world.phase !== 'drawing' || !world.activeDrawing || world.levelId !== level.id) return null;
-  return level.drawings.find(d => d.id === world.activeDrawing?.id) ?? null;
+  const drawing = level.drawings.find(d => d.id === world.activeDrawing?.id);
+  return drawing ? getDrawingPlan(world, drawing) : null;
 }
 
 /** Shared by the optional keyboard command and a direct press on a visible anchor. */
 function enterDrawingMode(world: GameWorld, drawing: DrawingObstacle): NonNullable<GameWorld['activeDrawing']> {
   releaseMechanisms(world);
   world.phase = 'drawing';
-  world.activeDrawing = { id: drawing.id, progress: 0, path: [], started: false };
+  world.activeDrawing = { id: drawing.id, progress: 0, path: [], started: false, choiceId: getDrawingChoice(world, drawing)?.id };
   world.player.vx = 0;
   world.player.vy = 0;
   return world.activeDrawing;
+}
+
+/** Planning freezes the puzzle, but only the player's completed stroke creates a surface. */
+export function selectDrawingChoice(world: GameWorld, level: PlatformLevel, drawingId: string, choiceId: string): PlayerStrokeResult {
+  const drawing = level.drawings.find(item => item.id === drawingId);
+  const choice = drawing?.choices?.find(item => item.id === choiceId);
+  if (!drawing || !choice || world.levelId !== level.id || world.activeDrawing?.started)
+    return { ok: false, message: 'Relâche le crayon avant de changer de chemin.' };
+  if (world.phase === 'playing' && getAvailableDrawing(world, level)?.id === drawingId) enterDrawingMode(world, drawing);
+  if (world.phase !== 'drawing' || world.activeDrawing?.id !== drawingId)
+    return { ok: false, message: 'Approche-toi du passage pour choisir ton chemin.' };
+  world.activeDrawing.choiceId = choiceId;
+  resetPlayerStroke(world);
+  return { ok: true, message: choice.hint };
 }
 
 /** Start one continuous gesture from either anchor, with no preliminary mode key required. */
@@ -196,14 +239,23 @@ export function beginPlayerStroke(world: GameWorld, level: PlatformLevel, point:
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return { ok: false, message: 'Commence sur l’un des deux repères.' };
   const start = drawing.path[0], end = drawing.path[drawing.path.length - 1];
   const ds = Math.hypot(point.x - start.x, point.y - start.y), de = Math.hypot(point.x - end.x, point.y - end.y);
-  const radius = Number.isFinite(anchorRadius) ? clamp(anchorRadius, 12, 72) : STROKE_ANCHOR_RADIUS;
+  const radius = Number.isFinite(anchorRadius) ? clamp(anchorRadius, 12, 96) : STROKE_ANCHOR_RADIUS;
+  const previous = world.activeDrawing;
+  if (world.phase === 'drawing' && previous && !previous.started && previous.path.length > 1) {
+    const tip = previous.path[previous.path.length - 1];
+    if (Math.hypot(point.x - tip.x, point.y - tip.y) <= radius) {
+      previous.started = true; previous.anchorRadius = radius;
+      return { ok: true, message: 'Continue ton trait jusqu’au repère d’arrivée.' };
+    }
+  }
   // Validate before entering drawing mode: a missed press must not stop or alter the game.
   if (Math.min(ds, de) > radius) return { ok: false, message: 'Commence sur l’un des deux repères.' };
   const active = world.phase === 'playing' ? enterDrawingMode(world, drawing) : world.activeDrawing!;
   active.path = [{ ...(ds <= de ? start : end) }];
   active.progress = 0;
   active.started = true;
-  return { ok: true, message: 'Garde le crayon appuyé jusqu’à l’autre repère.' };
+  active.anchorRadius = radius;
+  return { ok: true, message: 'Trace vers l’autre rive. Tu peux lever le doigt et reprendre au bout du trait.' };
 }
 
 export function appendPlayerStroke(world: GameWorld, level: PlatformLevel, point: PlatformPoint): PlayerStrokeResult {
@@ -218,7 +270,7 @@ export function appendPlayerStroke(world: GameWorld, level: PlatformLevel, point
   const target = Math.hypot(start.x - left.x, start.y - left.y) < 1 ? right : left;
   const span = target.x - start.x;
   active.progress = Math.abs(span) > 1 ? clamp((point.x - start.x) / span, 0, 1) : 0;
-  return { ok: true, message: 'Relie les deux repères sans lever le crayon.' };
+  return { ok: true, message: 'Continue jusqu’au repère d’arrivée.' };
 }
 
 /** Commit only on a valid, explicitly finished stroke. No timer can complete a construction. */
@@ -226,14 +278,40 @@ export function finishPlayerStroke(world: GameWorld, level: PlatformLevel): Play
   const drawing = currentDrawing(world, level), active = world.activeDrawing;
   if (!drawing || !active || drawing.path.length < 2) return { ok: false, message: 'Appelle la main près du passage à dessiner.' };
   active.started = false;
-  const result = preparePlayerStroke(active.path, drawing.path[0], drawing.path[drawing.path.length - 1]);
+  const a = drawing.path[0], b = drawing.path[drawing.path.length - 1];
+  const first = active.path[0], last = active.path[active.path.length - 1];
+  const end = first && Math.hypot(first.x - a.x, first.y - a.y) < Math.hypot(first.x - b.x, first.y - b.y) ? b : a;
+  const radius = active.anchorRadius ?? STROKE_ANCHOR_RADIUS;
+  if (last && active.path.length > 1 && Math.hypot(last.x - end.x, last.y - end.y) > radius)
+    return { ok: false, incomplete: true, message: 'Trait conservé. Reprends sur son extrémité dorée pour continuer.' };
+  const result = preparePlayerStroke(active.path, a, b, { assist: true, anchorRadius: radius, inkLimit: drawing.inkLimit });
   if (!result.ok) return { ok: false, message: result.message };
   world.constructions[drawing.id] = result.points;
   if (!world.drawn.includes(drawing.id)) world.drawn.push(drawing.id);
+  if (active.choiceId) world.drawingChoices[drawing.id] = active.choiceId;
   world.phase = 'playing';
   world.activeDrawing = null;
   world.invulnerable = Math.max(world.invulnerable, 0.4);
   return { ok: true, message: result.message };
+}
+
+/** Peel back a short part of the draft, preserving the rest for a new finger stroke. */
+export function undoPlayerStroke(world: GameWorld): void {
+  const active = world.activeDrawing;
+  if (world.phase !== 'drawing' || !active || active.started || active.path.length < 2) return;
+  const target = Math.max(0, strokeLength(active.path) - Math.max(35, strokeLength(active.path) * .18));
+  const result: PlatformPoint[] = [{ ...active.path[0] }];
+  let travelled = 0;
+  for (let i = 1; i < active.path.length; i++) {
+    const a = active.path[i - 1], b = active.path[i], length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (travelled + length > target) {
+      const t = length ? (target - travelled) / length : 0;
+      if (t > .001) result.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      break;
+    }
+    result.push({ ...b }); travelled += length;
+  }
+  active.path = result; active.progress = Math.max(0, active.progress * .82);
 }
 
 export function resetPlayerStroke(world: GameWorld): void {

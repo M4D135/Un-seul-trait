@@ -15,7 +15,7 @@ La planche de poses fournie par le joueur sert de référence de silhouette. L�
 
 Le [site consacré à Cavandoli](https://osvaldocavandoli.com/i-serial/) décrit le personnage comme une partie du trait : il marche, rencontre un obstacle et interpelle la main qui complète le décor. Il présente sa voix comme du grammelot.
 
-Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux sélectionnés pour la version 1.3.0 sont identifiés dans [CREDITS.md](../CREDITS.md).
+Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux introduits en version 1.3.0 et conservés en 1.4.0 sont identifiés dans [CREDITS.md](../CREDITS.md).
 
 ## Traduction dans le personnage jouable
 
@@ -27,7 +27,7 @@ Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert,
 
 La suppression du saut est un choix du jeu demandé par le joueur. Cette étude de séquences ne constitue pas un inventaire exhaustif de tous les épisodes. La posture basse jouable, les transitions, les obstacles et les déclenchements émotionnels restent des adaptations interactives.
 
-## Main photographique et voix de la version 1.3.0
+## Main photographique et voix introduites en version 1.3.0
 
 La main précédente, issue d’une source vidéo 480 × 360 px, est remplacée à la demande du joueur par une **image générée au rendu photographique**. L’asset mesure réellement **941 × 1 672 px** et conserve une transparence alpha; ce n’est pas une prise de vues du film ni une image 4K native. Le [manifeste de la main](../public/drawing-hand-hd-manifest.json) donne la provenance, le prompt exact et l’ancre du crayon **(41, 226)**.
 
@@ -39,9 +39,19 @@ Les protestations sont maintenant de petites scènes de plusieurs poses : observ
 
 ## Geste direct et présentation mobile
 
-La construction commence en posant le crayon sur **A ou B**, puis en traçant jusqu’à l’autre ancre. Le dessin direct à la souris ou au doigt n’exige pas E ; ce raccourci reste disponible pour ouvrir le mode dessin au clavier. La validation conserve le trait fourni par le joueur et accepte les deux sens du tracé.
+La construction commence en posant le crayon sur **A ou B**, puis en traçant jusqu’à l’autre ancre. Le dessin direct à la souris ou au doigt n’exige pas E ; ce raccourci reste disponible pour ouvrir le mode dessin au clavier. Depuis la version 1.4.0, un lever de doigt avant l’arrivée conserve le brouillon : le geste reprend sur sa pointe, dans les deux sens. **Reculer** retire une portion de la fin sans effacer le reste. La validation conserve la géométrie du joueur après un léger lissage des tremblements ; le guide facultatif ne remplace jamais son tracé.
+
+Neuf passages proposent deux plans, soit dix-huit variantes : détour vers une étoile, chemin court après déplacement d’une roue ou d’une presse, passage baissé et arche supérieure. Les plans modifient les contraintes du passage mais ne construisent rien automatiquement. La réserve d’encre tolère des courbes dessinées à la main. Un choix est engagé et sauvegardé seulement lorsque le nouveau pont est validé ; le précédent reste en place en cas d’annulation, de raccord manquant ou de dépassement du budget. Les anciennes sauvegardes sans choix de parcours conservent leur géométrie historique.
 
 En portrait comme en paysage, les flèches occupent la zone du pouce gauche ; baisser et se redresser sont à droite. Les poignées se saisissent directement dans la scène, sans bouton de déplacement automatique. La scène occupe toute la fenêtre, les commandes flottent dans les coins, les menus défilent séparément et les réglages restent accessibles. La caméra réserve une marge sous le sol pour que les pouces ne cachent pas le passage. Le changement de présentation ne modifie ni les collisions ni le sens de la marche. Les commandes personnalisées conservent deux emplacements de touche par action.
+
+## Oiseaux articulés de la version 1.4.0
+
+Les oiseaux sont des dessins vectoriels créés pour le jeu, animés par le code ; ils ne sont pas des images ou des prises de vues extraites de l’œuvre. Le même corps, la même tête, les mêmes ailes et la même queue restent présents pendant tout le cycle. Les ailes articulent épaule, coude et poignet avec une poussée plus courte que le retour ; les extrémités suivent avec un léger retard. Au repos, les deux pieds restent sur la ligne pendant la respiration, le picorage, les regards et le lissage des plumes.
+
+Le départ comporte un regard et une préparation de 0,42 seconde. Le retournement passe par une pose frontale avant l’envol. Les trajectoires sont courbes, avec poussée progressive, croisière bornée et freinage avant l’arrivée. Les ailes se relèvent, la queue s’ouvre et les pattes rejoignent le perchoir ; l’amorti dure 0,52 seconde avant le repli complet. Ce rythme est une mise en scène pour le jeu, pas une simulation biologique.
+
+Les pauses volontaires durent normalement 18 à 34 secondes. Au plus trois oiseaux sont dessinés dans le champ ; un second départ volontaire attend que l’activité voisine soit terminée. Les oiseaux posés hors champ ne lancent pas d’activité décorative. La recherche d’un perchoir et du trajet tient compte des surfaces, des dessins validés, des rails et des enveloppes des dangers mobiles. Si aucun départ dégagé n’est possible, l’oiseau se détend sur place au lieu de traverser le décor. Les trajectoires, les poses et le temps décoratif se figent pendant la pause ; le réglage de réduction des animations conserve les silhouettes posées.
 
 ## Vérification
 

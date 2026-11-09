@@ -7,6 +7,7 @@ export type SavedProgress = {
   levelId: number;
   checkpointIndex: number;
   constructions: Record<string, PlatformPoint[]>;
+  drawingChoices?: Record<string, string>;
   collected: number[];
   deaths: number;
   time: number;
@@ -21,6 +22,7 @@ export function saveProgress(world: GameWorld, level: PlatformLevel): SavedProgr
   return {
     version: 2, levelId: level.id, checkpointIndex: world.checkpointIndex,
     constructions: Object.fromEntries(level.drawings.filter(d => world.drawn.includes(d.id) && world.constructions[d.id]).map(d => [d.id, world.constructions[d.id].map(p => ({...p}))])),
+    drawingChoices: { ...world.drawingChoices },
     collected: [...world.collected], deaths: world.deaths, time: world.time,
     mechanisms: Object.fromEntries((level.mechanisms ?? []).map(m => [m.id, world.mechanisms[m.id]?.progress ?? m.initialProgress ?? 0])),
   };
@@ -40,8 +42,20 @@ export function restoreProgress(raw: unknown, level: PlatformLevel): GameWorld |
   if (record(raw.constructions)) for (const drawing of level.drawings) {
     const path = raw.constructions[drawing.id];
     if (!Array.isArray(path) || path.length < 2 || path.length > 4000 || path.some(p => !record(p) || typeof p.x !== 'number' || typeof p.y !== 'number')) continue;
-    const prepared = preparePlayerStroke(path as PlatformPoint[], drawing.path[0], drawing.path[drawing.path.length - 1]);
-    if (prepared.ok) { world.constructions[drawing.id] = prepared.points; world.drawn.push(drawing.id); }
+    const selected = record(raw.drawingChoices) ? raw.drawingChoices[drawing.id] : null;
+    const preferred = drawing.choices?.find(choice => choice.id === selected);
+    if (typeof selected === 'string' && !preferred) continue;
+    const plans = preferred ? [preferred]
+      : [drawing, ...(drawing.choices ?? [])];
+    for (const plan of plans) {
+      // Preserve legacy bridges. New, explicitly chosen plans keep their ink budget on reload.
+      const prepared = preparePlayerStroke(path as PlatformPoint[], plan.path[0], plan.path[plan.path.length - 1],
+        { inkLimit: preferred ? preferred.inkLimit ?? drawing.inkLimit : undefined });
+      if (!prepared.ok) continue;
+      world.constructions[drawing.id] = prepared.points; world.drawn.push(drawing.id);
+      if ('label' in plan) world.drawingChoices[drawing.id] = plan.id;
+      break;
+    }
   }
   if (record(raw.mechanisms)) for (const mechanism of level.mechanisms ?? []) {
     const progress = bounded(raw.mechanisms[mechanism.id], 0, 1, mechanism.initialProgress ?? 0);

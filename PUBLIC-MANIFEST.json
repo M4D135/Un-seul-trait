@@ -19,22 +19,22 @@
     {
       "path": "CREDITS.md",
       "bytes": 6337,
-      "sha256": "84b055308fbabf98eff265cc815e9c61f22b4bc32fb98a8cb6d84191a653aa57"
+      "sha256": "0a5224b3e1cf89773f5b162bc284f3ce60a0330d66112a925da83c0658a3f87c"
     },
     {
       "path": "README.md",
-      "bytes": 6484,
-      "sha256": "b34a046eadf82f0a8305a5d3d044b337fd46ef9eb385355f477c7f16bbe909b5"
+      "bytes": 9364,
+      "sha256": "2907adc64796dd7a840d0df799b1d7a192ce342c17d1bfcd63ec97c504b20f5d"
     },
     {
       "path": "app/globals.css",
-      "bytes": 22564,
-      "sha256": "e5c12253c4e04b6f225a3aac74d15590c2f001e8173b7f724e2842c023bb2827"
+      "bytes": 25556,
+      "sha256": "1cf91c24fd9b70b39da5664545028d1a632f92c5eb957493c8ca30ef60ddb6fb"
     },
     {
       "path": "app/page.tsx",
-      "bytes": 47413,
-      "sha256": "1fe903ef8fd71eeef1324ad8a9c020f1b2b8cd5951c16abc8451f7b913393f63"
+      "bytes": 49669,
+      "sha256": "9876efd07d5a9bd5c950de0b9ea9c86e65a07b1dbe6575265ce61f0d0d924217"
     },
     {
       "path": "components/trait/controls-config.module.css",
@@ -47,14 +47,19 @@
       "sha256": "cc914a592df4dce679da519a939a879e38ce1a190c4592065a89c7f48d5d5b7f"
     },
     {
+      "path": "components/trait/drawing-palette.tsx",
+      "bytes": 3338,
+      "sha256": "47c3bcdc11be8830b0dedc10a452cccaafbfcacb8fc029ccc54a74867b7bd420"
+    },
+    {
       "path": "docs/BUILD.md",
-      "bytes": 8071,
-      "sha256": "fa9000c02e7d6b981cabc51cde24ea520efff8eeaa32add151846a0c01f8a1d2"
+      "bytes": 9373,
+      "sha256": "a895893696d55e6df28e593686a8050bdf0d6e13033a1c8a425402d7ca242c07"
     },
     {
       "path": "docs/MOVEMENTS.md",
-      "bytes": 7460,
-      "sha256": "c6afa61167b12d022f5b6a31ee9e1e5e15bb3eca909f002303f2a8b40611e57b"
+      "bytes": 10051,
+      "sha256": "45d4e4bcc926fe05b6bd88af0fa02a4fff41d8d83504f2a4064eb4af7f40c774"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -62,9 +67,14 @@
       "sha256": "bc22ff0e1addf46853a9e95597c6a77a2998fa5d37462a37121ee2855c7ea107"
     },
     {
+      "path": "lib/trait/ambient-bird-renderer.ts",
+      "bytes": 10730,
+      "sha256": "4583b181cc52c3abcd1c7b310b17c6f2a469a9b56d1a295efde40f4f3b0a014e"
+    },
+    {
       "path": "lib/trait/ambient-life.ts",
-      "bytes": 16179,
-      "sha256": "2e023627b5ab0a79163d185fb260d3a0f575459b7e9d3bd6f67e3afdafe9ff6a"
+      "bytes": 25834,
+      "sha256": "ae5d3a2a396749b7069b73ae9bea7cf79e787faff4722fb7f6ff347599935974"
     },
     {
       "path": "lib/trait/audio.ts",
@@ -73,8 +83,8 @@
     },
     {
       "path": "lib/trait/camera.ts",
-      "bytes": 6392,
-      "sha256": "7a775c2d89f2c6616c2113fae01c9bc4bd6b4b0fa66b18477ecadc2ac4b4e0a1"
+      "bytes": 6585,
+      "sha256": "3b2410230a0edad6164249a3791f1e69e4265b927256d1106440856f849e9c8e"
     },
     {
       "path": "lib/trait/cartoon-character.ts",
@@ -103,13 +113,13 @@
     },
     {
       "path": "lib/trait/platform-drawing.ts",
-      "bytes": 4425,
-      "sha256": "ad5c632163b41557068e84c4aebac927dedbe68640710278e69848c5bb991641"
+      "bytes": 6810,
+      "sha256": "a7a4c58d244dc39d7678a38da783a3f7c2d92f180772b3e1ba54f68a496a2c34"
     },
     {
       "path": "lib/trait/platform-levels.ts",
-      "bytes": 20677,
-      "sha256": "9fc3d1ebb07f0111b6bb73479e1ecffce5632653a00ce3dfe7979018d9964ae6"
+      "bytes": 28519,
+      "sha256": "09608fe266f2d033f7cfc8b3726043cbaf792ca735c8f46fdae328c0f535bec7"
     },
     {
       "path": "lib/trait/platform-mechanisms.ts",
@@ -118,28 +128,33 @@
     },
     {
       "path": "lib/trait/platform-renderer.ts",
-      "bytes": 20273,
-      "sha256": "d1cd9133508fc4306262143bce2edd698ea9c80454268582a125359e03db615e"
+      "bytes": 21798,
+      "sha256": "c464ed43b0a6ea48194598b3523e10328a439485d24d85e2e8ff467261605a65"
     },
     {
       "path": "lib/trait/platformer.ts",
-      "bytes": 22661,
-      "sha256": "8f1a82e321cd71a524f27c30b16d16287e6d7684ad95bef5e99a0f66b7003388"
+      "bytes": 27098,
+      "sha256": "48c0f913c9e55f8ec77c76ed0b5ebba14394fd39fa348023b9b375d61c417141"
     },
     {
       "path": "lib/trait/progress.ts",
-      "bytes": 3419,
-      "sha256": "272886b9cb9026841cbb13a802df3f74b83200d5221953e9c4a629bf4304f397"
+      "bytes": 4142,
+      "sha256": "603ce22bca99cfe35b122988dcb7de5a0d61460e228b7b691b562f20b83524d6"
+    },
+    {
+      "path": "lib/trait/route-planning.ts",
+      "bytes": 2377,
+      "sha256": "b4bc1fd3cebfb63d6afeb7de4edee43073a2a27cb19b61b777d2b360e58c1e53"
     },
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "6caa484cb46e96a0a3633147f2c8d56cbd02ef0d29350ad22b1b8b3ac088cbf9"
+      "sha256": "2a5f80543ffd7b6766e9216afcf27f6a4a8f3c9a9b1484fba77a484b2007ec6d"
     },
     {
       "path": "package.json",
       "bytes": 949,
-      "sha256": "55bbab73bae97a73d3031c665656b39df8ff2f07922b37fa48b1371c5e8ac724"
+      "sha256": "4ddfdf06179a019831076fb8bdcbcc24750b1b62ad5db31955a760fe83dc6669"
     },
     {
       "path": "public/drawing-hand-hd-manifest.json",
@@ -193,8 +208,8 @@
     },
     {
       "path": "tests/ambient-life.test.ts",
-      "bytes": 8651,
-      "sha256": "b43231bc1983bc5e5466cb95b92bb242375ff74881254f56abef4e024569ddc9"
+      "bytes": 15389,
+      "sha256": "ed39ccadd62367af4fd058ccd6dd48857fd3ed6d0a3509a31c2b053368ac1d67"
     },
     {
       "path": "tests/camera.test.ts",
@@ -217,6 +232,11 @@
       "sha256": "29515598e52c768e6a8495a69a0f63a9b178629c7005163d85e152dcc5f4bb85"
     },
     {
+      "path": "tests/drawing-plans.test.ts",
+      "bytes": 15065,
+      "sha256": "f3571b05927cdd744fafa261cd4ba5c8bf9cca3467620ea309481e3c00f1f58d"
+    },
+    {
       "path": "tests/hand.test.ts",
       "bytes": 4805,
       "sha256": "55cf536dd88d0f7713e6211a8613a8baa8f658832184b4672473065016a01f04"
@@ -233,8 +253,13 @@
     },
     {
       "path": "tests/progress.test.ts",
-      "bytes": 3955,
-      "sha256": "845ca05dfa6cfed8e7d3968d2bb38676a673584d33f2ce6f631b2731e3132252"
+      "bytes": 4384,
+      "sha256": "552f491088539c19c0e7be0e61b7ba68627d2f6ed5ab1272c2585e19ac94a6d1"
+    },
+    {
+      "path": "tests/puzzle-design.test.ts",
+      "bytes": 8802,
+      "sha256": "9a4e8d7a78dd46be307b9feb4ba6bcc78159178d721786ac3051e913618ea484"
     },
     {
       "path": "tsconfig.json",

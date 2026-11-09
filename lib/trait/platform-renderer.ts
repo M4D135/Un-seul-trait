@@ -1,6 +1,7 @@
 import { drawCartoonCharacter, getCharacterGroundSpan } from './cartoon-character';
 import type { CompanionActing } from './companion';
-import { getAvailableDrawing, getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
+import { getAvailableDrawing, getDrawingPlan, getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
+import { stabilizePlayerStroke } from './platform-drawing';
 
 export const PLATFORM_PALETTES = {
   blue: { background: '#064b8e', ink: '#fffdf6', accent: '#f6d89a' },
@@ -153,7 +154,7 @@ export function drawPlatformScene(
   world: GameWorld,
   options: {
     cameraX:number; viewWidth:number; pixelScale?:number; talkAmount:number; reducedMotion:boolean;
-    companion?:CompanionActing; pointer?:PlatformPoint|null; blood?:boolean;
+    companion?:CompanionActing; pointer?:PlatformPoint|null; blood?:boolean; showGuide?:boolean;
   },
 ) {
   const palette = PLATFORM_PALETTES[level.palette];
@@ -268,11 +269,15 @@ export function drawPlatformScene(
     if(p.x<options.cameraX-180 || p.x>options.cameraX+options.viewWidth+180)continue;
     if(hazard.type==='gear') {
       if(hazard.motion!=='swing'&&hazard.axis && hazard.range && !mechanisms.some(view=>view.mechanism.type==='gear'&&view.mechanism.hazardId===hazard.id)) {
-        ctx.save();ctx.globalAlpha=.2;ctx.strokeStyle=palette.ink;ctx.lineWidth=1.5;ctx.setLineDash([3,7]);
+        ctx.save();ctx.globalAlpha=.45;ctx.strokeStyle=palette.ink;ctx.lineWidth=1.65;
         ctx.beginPath();
         if(hazard.axis==='y'){ctx.moveTo(hazard.x,hazard.y-hazard.range);ctx.lineTo(hazard.x,hazard.y+hazard.range);}
         else{ctx.moveTo(hazard.x-hazard.range,hazard.y);ctx.lineTo(hazard.x+hazard.range,hazard.y);}
-        ctx.stroke();ctx.restore();
+        ctx.stroke();
+        const ends=hazard.axis==='y'?[{x:hazard.x,y:hazard.y-hazard.range},{x:hazard.x,y:hazard.y+hazard.range}]
+          :[{x:hazard.x-hazard.range,y:hazard.y},{x:hazard.x+hazard.range,y:hazard.y}];
+        for(const end of ends){ctx.beginPath();ctx.arc(end.x,end.y,4,0,TAU);ctx.stroke();}
+        ctx.restore();
       }
       if(hazard.appearance==='pendulum')pendulum(ctx,{x:hazard.x,y:hazard.y-(hazard.armLength??150)},p,hazard.r,palette.ink,palette.background);
       else if(hazard.appearance==='saw')saw(ctx,p.x,p.y,hazard.r,world.time*2.4+(hazard.phase??0),palette.ink,palette.background);
@@ -285,7 +290,11 @@ export function drawPlatformScene(
         ctx.lineTo(hazard.x+(i+.5)*hazard.w/count,hazard.y);
         ctx.lineTo(hazard.x+(i+1)*hazard.w/count,hazard.y+hazard.h);
       }
-      ctx.stroke();
+      ctx.lineTo(hazard.x+hazard.w,hazard.y+hazard.h+9);
+      ctx.lineTo(hazard.x,hazard.y+hazard.h+9);ctx.closePath();
+      ctx.fillStyle=palette.background;ctx.fill();ctx.stroke();
+      ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(hazard.x+3,hazard.y+hazard.h);
+      ctx.lineTo(hazard.x+hazard.w-3,hazard.y+hazard.h);ctx.stroke();
       ctx.restore();
     }
   }
@@ -344,11 +353,17 @@ export function drawPlatformScene(
     if(p.size>3)ctx.stroke();ctx.restore();
   }
 
-  const drawing=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):availableDrawing;
+  const source=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):availableDrawing;
+  const drawing=source?getDrawingPlan(world,source):null;
   if(drawing) {
     if(world.activeDrawing){
+      if(options.showGuide){
+        ctx.save();ctx.globalAlpha=.25;ctx.strokeStyle=palette.accent;ctx.lineWidth=1.6;
+        ctx.setLineDash([5,8]);ctx.beginPath();
+        drawing.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();
+      }
       ctx.strokeStyle=palette.ink;ctx.lineWidth=STROKE;ctx.beginPath();
-      world.activeDrawing.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();
+      stabilizePlayerStroke(world.activeDrawing.path).forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();
     }
   }
   ctx.restore();
@@ -356,11 +371,12 @@ export function drawPlatformScene(
 
 /** Interaction markers sit above the photographed hand, keeping the target visible. */
 export function drawPassageAnchors(ctx:CanvasRenderingContext2D,level:PlatformLevel,world:GameWorld,options:{cameraX:number;pixelScale:number}) {
-  const drawing=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):getAvailableDrawing(world,level);
+  const source=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):getAvailableDrawing(world,level);
+  const drawing=source?getDrawingPlan(world,source):null;
   if(drawing){
     const palette=PLATFORM_PALETTES[level.palette];
     ctx.save();ctx.translate(-options.cameraX,0);
-    const scale=Math.max(.25,options.pixelScale),radius=Math.max(11,Math.min(36,14/scale));
+    const scale=Math.max(.25,options.pixelScale),radius=Math.max(12,Math.min(42,17/scale));
     [drawing.path[0],drawing.path[drawing.path.length-1]].forEach((point,index)=>{
       ctx.save();ctx.fillStyle=palette.background;ctx.strokeStyle=palette.accent;ctx.lineWidth=1.5/scale;
       ctx.beginPath();ctx.arc(point.x,point.y,radius,0,TAU);ctx.fill();ctx.stroke();
@@ -369,6 +385,12 @@ export function drawPassageAnchors(ctx:CanvasRenderingContext2D,level:PlatformLe
       ctx.fillText(index===0?'A':'B',point.x,point.y-radius-9/scale);
       ctx.restore();
     });
+    const active=world.activeDrawing,tip=active?.path.at(-1);
+    if(active&&tip&&!active.started&&active.path.length>1){
+      ctx.strokeStyle=palette.accent;ctx.fillStyle=palette.background;ctx.lineWidth=2/scale;
+      ctx.beginPath();ctx.arc(tip.x,tip.y,Math.max(8,10/scale),0,TAU);ctx.fill();ctx.stroke();
+      ctx.fillStyle=palette.accent;ctx.beginPath();ctx.arc(tip.x,tip.y,3/scale,0,TAU);ctx.fill();
+    }
     ctx.restore();
   }
 }
