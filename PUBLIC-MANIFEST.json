@@ -18,28 +18,28 @@
     },
     {
       "path": "CREDITS.md",
-      "bytes": 2698,
-      "sha256": "399e52a93d03abe6a1578a24e6bc5e5d23dee07cdd55cf9c6200f6b71a0760ca"
+      "bytes": 6193,
+      "sha256": "82cb372c4bbfa0b45594314eb46171aed813ff34af87fda33a5926e750c6712a"
     },
     {
       "path": "README.md",
-      "bytes": 5879,
-      "sha256": "94c68161a4586df47a1a182332379285d5a86eb2cd9c3ed8a38240675920aac7"
+      "bytes": 8076,
+      "sha256": "14ecc23775f6c3ea2be02ee6403d3b5409c9d265cd982c1232655a9f82af450c"
     },
     {
       "path": "app/globals.css",
-      "bytes": 34843,
-      "sha256": "47a26cfd1c0b43d7150df4b91eb172543b35256f87579dda9dd7975149738608"
+      "bytes": 46582,
+      "sha256": "8db6d69bd2e73b458470b58cb270eb8e26419cce78c8aabe672c5e6c4d1758a1"
     },
     {
       "path": "app/page.tsx",
-      "bytes": 45640,
-      "sha256": "ee7ff4b7789ce1f88cd3e0ae8ed4fb435d7e062145387f8b6d18a359cfbe86d7"
+      "bytes": 49851,
+      "sha256": "c562b6000de79710cc20dc45cd9c600079b9109f38a74b46591f3756910c28f2"
     },
     {
       "path": "components/trait/controls-config.module.css",
-      "bytes": 3415,
-      "sha256": "8d8c41786c22e6c017b6ec09fb6254cc662cb585394d3deda273fa3b990566c9"
+      "bytes": 4002,
+      "sha256": "aa1e6bceddbec93899e0724c5b7c5f6131d4ec1726ccc78a4584a8181577134d"
     },
     {
       "path": "components/trait/controls-config.tsx",
@@ -48,13 +48,13 @@
     },
     {
       "path": "docs/BUILD.md",
-      "bytes": 4064,
-      "sha256": "d336cb9f2fdcdd8349aa161312e0d449959b0410be9f6d447ef76c50b3c96595"
+      "bytes": 7961,
+      "sha256": "c7293cd5a7008b7553a7e86371305f370f6fa62e4719e0ec734e5cf7d16b09f3"
     },
     {
       "path": "docs/MOVEMENTS.md",
-      "bytes": 3484,
-      "sha256": "bc1a89f02cec4110cfc63686b42f2680d8240b908f94682a9a240f2d028f6536"
+      "bytes": 6843,
+      "sha256": "55d2aa8bcf1d0ac46968265be5f06dd6df007a5c9126d5723d961715ea959aca"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -63,8 +63,8 @@
     },
     {
       "path": "lib/trait/audio.ts",
-      "bytes": 24880,
-      "sha256": "e52151161fea992b812abc7c971fa84698dc53d35d9a0348fd49dc65bf891a88"
+      "bytes": 31576,
+      "sha256": "f42fe5587117d77ed9d7e9a937516175425e3a4b2137ac87a2ce934daa269f86"
     },
     {
       "path": "lib/trait/cartoon-character.ts",
@@ -83,8 +83,13 @@
     },
     {
       "path": "lib/trait/hand.ts",
-      "bytes": 3496,
-      "sha256": "057979ad8d53dc91aceaccfd27ed155f4e770e6a6a15ef13f945f01e2ddcce82"
+      "bytes": 4236,
+      "sha256": "eca810bdc6f2f70167f0ea0374f314480044d00db925dac9ab38cf6d1431ff4f"
+    },
+    {
+      "path": "lib/trait/original-media.ts",
+      "bytes": 2705,
+      "sha256": "c08237a341211c2c95130ffe3ee4681de3c2fb9695a8d29041bc357cb8cffe52"
     },
     {
       "path": "lib/trait/platform-drawing.ts",
@@ -103,13 +108,13 @@
     },
     {
       "path": "lib/trait/platform-renderer.ts",
-      "bytes": 16873,
-      "sha256": "554cb0a11e25079c6dcc7a494af21f446c7deb4bf6a14adcf0779d10806b4dab"
+      "bytes": 17537,
+      "sha256": "d24c131be0d92cc72958a971d1c1111f2268f0fdbe306d7508c0f481d544a481"
     },
     {
       "path": "lib/trait/platformer.ts",
-      "bytes": 21471,
-      "sha256": "938e2230b1306e2aedc921141768ba1902fcabba2308c4b105636cb9328fec45"
+      "bytes": 22154,
+      "sha256": "48225bdf62cfba06baf9377f70bc51ad967435b87e7a524c84bda40a4254baf1"
     },
     {
       "path": "lib/trait/progress.ts",
@@ -119,17 +124,12 @@
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "7e70620237b4921fdbb0cfa8466feaf239d0a9f59c69117ef48d25e8528d38f0"
+      "sha256": "37b05dca4e11303a01c535952146e7d7867bde7a541b962bb095a564aac39c4c"
     },
     {
       "path": "package.json",
       "bytes": 949,
-      "sha256": "9ef612383b2390284d3d025875f30b16af90722db748c86bacd56ddeb4e4e9be"
-    },
-    {
-      "path": "public/drawing-hand.png",
-      "bytes": 1397450,
-      "sha256": "aca1ae45dac348b76d786bc6b01c6c0b1b38b2f4955e3e2c62f28e931a14db21"
+      "sha256": "d519a8cfb7ddc44f7aea5570d230bdf381d4a87d97b5e032d98e2638d15efb62"
     },
     {
       "path": "public/favicon.svg",
@@ -137,9 +137,29 @@
       "sha256": "0c9b8c61ae67bc2636b48dc84189766900099250a1047328c9229b5d514721af"
     },
     {
+      "path": "public/original-hand-atlas.webp",
+      "bytes": 126768,
+      "sha256": "5babed9b7719674bdf7f7274122809878f9652be53fc1ac4b8b68567ee4f2db2"
+    },
+    {
+      "path": "public/original-hand-manifest.json",
+      "bytes": 5706,
+      "sha256": "e14274b3288b1efcb51b84b1ac0dac1a33b7df0360668bfc38b392ace93b2025"
+    },
+    {
+      "path": "public/original-voice-manifest.json",
+      "bytes": 2371,
+      "sha256": "cc69c017d8b22f9e2a9e080113094170987c6bbb1b8f157f3b70890dc80b1414"
+    },
+    {
+      "path": "public/original-voice.wav",
+      "bytes": 257588,
+      "sha256": "56445c7fdd702f8c993d2316fbe8b1212ee858ff3b9f7edbbe81e7db4d0e845b"
+    },
+    {
       "path": "scripts/public-app/index.html",
-      "bytes": 677,
-      "sha256": "125ad535e29ad8d1ff7fa29eebffe93b1542feabfbba4e71a009f977d5987eac"
+      "bytes": 747,
+      "sha256": "1de18d0205503db0a6fdae1f83df99dafa850979a581f7a74fdec1d74e60b2f4"
     },
     {
       "path": "scripts/public-app/main.tsx",
@@ -148,8 +168,8 @@
     },
     {
       "path": "scripts/public-build.mjs",
-      "bytes": 3261,
-      "sha256": "22ff81b7908a6a137284dcc4aa899a75a7c486446606f15bba4bada455d04445"
+      "bytes": 3673,
+      "sha256": "96683933fa581a34c2102aacaa5647acfbb5f7c53bf2d72acbf7880de6e1ad87"
     },
     {
       "path": "scripts/public-test.mjs",
@@ -158,8 +178,8 @@
     },
     {
       "path": "scripts/public-vite.config.mjs",
-      "bytes": 1705,
-      "sha256": "55e7f41e1a128679b8ad367645c6b49df9302a94a194ac1cc8f513d979487fff"
+      "bytes": 1905,
+      "sha256": "c11c1a1a9304e5ba70f355557d49e4854b54e8de8fe51467dd3a46eff25a09f4"
     },
     {
       "path": "tests/companion.test.ts",
@@ -170,6 +190,16 @@
       "path": "tests/controls.test.ts",
       "bytes": 2441,
       "sha256": "c4a2369c518b72010a908d5842bbeaf13a5c26514e9cf612c8cca21ddb59af6c"
+    },
+    {
+      "path": "tests/direct-drawing.test.ts",
+      "bytes": 5925,
+      "sha256": "797112541b34d7f8c7c9291085ca5b71035072b313aaf814480ae5062567f124"
+    },
+    {
+      "path": "tests/original-audio.test.ts",
+      "bytes": 9921,
+      "sha256": "629ca181e340bc8e9f8f621875cb40d7b6499f70cdd320b01907461b7f283e2a"
     },
     {
       "path": "tests/platform-mechanisms.test.ts",

@@ -1,6 +1,6 @@
 import { drawCartoonCharacter, getCharacterGroundSpan } from './cartoon-character';
 import type { CompanionActing } from './companion';
-import { getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
+import { getAvailableDrawing, getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
 
 export const PLATFORM_PALETTES = {
   blue: { background: '#064b8e', ink: '#fffdf6', accent: '#f6d89a' },
@@ -128,12 +128,13 @@ export function drawPlatformScene(
   level: PlatformLevel,
   world: GameWorld,
   options: {
-    cameraX:number; viewWidth:number; talkAmount:number; reducedMotion:boolean;
+    cameraX:number; viewWidth:number; pixelScale?:number; talkAmount:number; reducedMotion:boolean;
     companion?:CompanionActing; pointer?:PlatformPoint|null; blood?:boolean;
   },
 ) {
   const palette = PLATFORM_PALETTES[level.palette];
   const {player} = world;
+  const availableDrawing=getAvailableDrawing(world,level);
   const moving=Math.abs(player.vx)>8;
   const motion = !player.grounded ? 'fall' : player.crouching ? (moving?'crouch-walk':'crouch')
     : world.phase==='won' ? 'happy' : world.phase==='drawing' ? (options.companion?'idle':'grumpy')
@@ -145,11 +146,9 @@ export function drawPlatformScene(
   const pointerNear=options.pointer&&Math.hypot(options.pointer.x-player.x,options.pointer.y-(player.y-headHeight))<90;
   const target=companion?.target??(pointerNear?options.pointer:null);
   const look=target ? Math.max(-1,Math.min(1,(target.y-(player.y-headHeight))/65)) : 0;
-  const speaking=companion?.speech&&companion.age<.72;
-  const mouthBeat=speaking?[.15,.85,.25,.65][Math.floor(companion.age/.08)%4]:0;
   const actor = {
     x:player.x,y:player.y,scale:.60,facing: facing as -1|1,motion,
-    travel:player.travel,time:world.time,talkAmount:Math.max(options.talkAmount,mouthBeat),
+    travel:player.travel,time:world.time,talkAmount:options.talkAmount,
     ink:palette.ink,background:palette.background,stroke:STROKE,reducedMotion:options.reducedMotion,
     gesture:companion?.gesture,gestureAge:companion?.age,gestureDuration:companion?.duration,look,
   } as Parameters<typeof drawCartoonCharacter>[1];
@@ -203,7 +202,7 @@ export function drawPlatformScene(
 
   // Undrawn structures remain absent; a discreet pencil marker calls the hand.
   for(const drawing of level.drawings) {
-    if(world.drawn.includes(drawing.id)||drawing.id===world.activeDrawing?.id)continue;
+    if(world.drawn.includes(drawing.id)||drawing.id===world.activeDrawing?.id||drawing.id===availableDrawing?.id)continue;
     if(drawing.triggerX<options.cameraX-100 || drawing.triggerX>options.cameraX+options.viewWidth+80)continue;
     const surface=surfaces.find(s=>s.a.x<=drawing.triggerX&&s.b.x>=drawing.triggerX);
     const ground=surface ? surface.a.y+(surface.b.y-surface.a.y)*(drawing.triggerX-surface.a.x)/(surface.b.x-surface.a.x) : 430;
@@ -304,19 +303,31 @@ export function drawPlatformScene(
     if(p.size>3)ctx.stroke();ctx.restore();
   }
 
-  if(world.activeDrawing) {
-    const drawing=level.drawings.find(d=>d.id===world.activeDrawing?.id);
-    if(drawing) {
+  const drawing=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):availableDrawing;
+  if(drawing) {
+    if(world.activeDrawing){
       ctx.strokeStyle=palette.ink;ctx.lineWidth=STROKE;ctx.beginPath();
       world.activeDrawing.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();
-      [drawing.path[0],drawing.path[drawing.path.length-1]].forEach((point,index)=>{
-        ctx.save();ctx.fillStyle=palette.background;ctx.strokeStyle=palette.accent;ctx.lineWidth=2;
-        ctx.beginPath();ctx.arc(point.x,point.y,11,0,TAU);ctx.fill();ctx.stroke();
-        ctx.fillStyle=palette.accent;ctx.beginPath();ctx.arc(point.x,point.y,3,0,TAU);ctx.fill();
-        ctx.font='600 14px Arial, sans-serif';ctx.textAlign='center';ctx.fillText(index===0?'A':'B',point.x,point.y-22);
-        ctx.restore();
-      });
     }
   }
   ctx.restore();
+}
+
+/** Interaction markers sit above the photographed hand, keeping the target visible. */
+export function drawPassageAnchors(ctx:CanvasRenderingContext2D,level:PlatformLevel,world:GameWorld,options:{cameraX:number;pixelScale:number}) {
+  const drawing=world.activeDrawing?level.drawings.find(d=>d.id===world.activeDrawing?.id):getAvailableDrawing(world,level);
+  if(drawing){
+    const palette=PLATFORM_PALETTES[level.palette];
+    ctx.save();ctx.translate(-options.cameraX,0);
+    const scale=Math.max(.25,options.pixelScale),radius=Math.max(11,Math.min(36,14/scale));
+    [drawing.path[0],drawing.path[drawing.path.length-1]].forEach((point,index)=>{
+      ctx.save();ctx.fillStyle=palette.background;ctx.strokeStyle=palette.accent;ctx.lineWidth=1.5/scale;
+      ctx.beginPath();ctx.arc(point.x,point.y,radius,0,TAU);ctx.fill();ctx.stroke();
+      ctx.fillStyle=palette.accent;ctx.beginPath();ctx.arc(point.x,point.y,Math.max(3,3/scale),0,TAU);ctx.fill();
+      ctx.font=`600 ${Math.max(14,12/scale)}px Arial, sans-serif`;ctx.textAlign='center';
+      ctx.fillText(index===0?'A':'B',point.x,point.y-radius-9/scale);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
 }

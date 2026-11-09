@@ -169,14 +169,28 @@ function currentDrawing(world: GameWorld, level: PlatformLevel): DrawingObstacle
   return level.drawings.find(d => d.id === world.activeDrawing?.id) ?? null;
 }
 
-/** Start or replace the draft, from either anchor. A previous valid bridge is kept until success. */
-export function beginPlayerStroke(world: GameWorld, level: PlatformLevel, point: PlatformPoint): PlayerStrokeResult {
-  const drawing = currentDrawing(world, level), active = world.activeDrawing;
-  if (!drawing || !active || drawing.path.length < 2) return { ok: false, message: 'Appelle la main près du passage à dessiner.' };
+/** Shared by the optional keyboard command and a direct press on a visible anchor. */
+function enterDrawingMode(world: GameWorld, drawing: DrawingObstacle): NonNullable<GameWorld['activeDrawing']> {
+  releaseMechanisms(world);
+  world.phase = 'drawing';
+  world.activeDrawing = { id: drawing.id, progress: 0, path: [], started: false };
+  world.player.vx = 0;
+  world.player.vy = 0;
+  return world.activeDrawing;
+}
+
+/** Start one continuous gesture from either anchor, with no preliminary mode key required. */
+export function beginPlayerStroke(world: GameWorld, level: PlatformLevel, point: PlatformPoint, anchorRadius = STROKE_ANCHOR_RADIUS): PlayerStrokeResult {
+  if (world.levelId !== level.id) return { ok: false, message: 'Approche-toi du passage à dessiner.' };
+  const drawing = world.phase === 'playing' ? getAvailableDrawing(world, level) : currentDrawing(world, level);
+  if (!drawing || drawing.path.length < 2) return { ok: false, message: 'Approche-toi du passage à dessiner.' };
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return { ok: false, message: 'Commence sur l’un des deux repères.' };
   const start = drawing.path[0], end = drawing.path[drawing.path.length - 1];
   const ds = Math.hypot(point.x - start.x, point.y - start.y), de = Math.hypot(point.x - end.x, point.y - end.y);
-  if (Math.min(ds, de) > STROKE_ANCHOR_RADIUS) return { ok: false, message: 'Commence sur l’un des deux repères.' };
+  const radius = Number.isFinite(anchorRadius) ? clamp(anchorRadius, 12, 72) : STROKE_ANCHOR_RADIUS;
+  // Validate before entering drawing mode: a missed press must not stop or alter the game.
+  if (Math.min(ds, de) > radius) return { ok: false, message: 'Commence sur l’un des deux repères.' };
+  const active = world.phase === 'playing' ? enterDrawingMode(world, drawing) : world.activeDrawing!;
   active.path = [{ ...(ds <= de ? start : end) }];
   active.progress = 0;
   active.started = true;
@@ -447,11 +461,7 @@ export function updateWorld(world: GameWorld, level: PlatformLevel, input: Platf
   if (input.draw && world.phase === 'playing') {
     const drawing = getAvailableDrawing(world, level);
     if (drawing) {
-      releaseMechanisms(world);
-      world.phase = 'drawing';
-      world.activeDrawing = { id: drawing.id, progress: 0, path: [], started: false };
-      world.player.vx = 0;
-      world.player.vy = 0;
+      enterDrawingMode(world, drawing);
       events.push('draw-start');
       return events;
     }

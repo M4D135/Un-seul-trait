@@ -1,0 +1,250 @@
+{
+  "asset": "original-hand-atlas.webp",
+  "source_page": "https://www.quipos.net/en/animations/la-linea/",
+  "source_url": "https://www.quipos.net/custom/video/Linea-serie-100.flv",
+  "source_interval_seconds": [
+    1.32,
+    1.48
+  ],
+  "source_format": {
+    "video_codec": "vp6f",
+    "width": 480,
+    "height": 360,
+    "fps": 25
+  },
+  "output": {
+    "width": 1216,
+    "height": 304,
+    "columns": 4,
+    "rows": 1,
+    "frame_width": 304,
+    "frame_height": 304,
+    "frames": 4,
+    "fps": 25,
+    "duration_seconds": 0.16,
+    "anchor": [
+      16,
+      16
+    ],
+    "alpha": true
+  },
+  "treatment": "Measured pencil-tip integer translation for stabilization; chroma alpha matte and manually measured pencil silhouette. Original decoded RGB samples unchanged. No generated pixels, inpainting, relighting, or invented arm.",
+  "limitations": [
+    "Four successive frames contain two held photographed poses. Playback at the source 25 fps is 0.16 seconds; translating or slowing this tiny wrist motion is a UI adaptation.",
+    "The entire hand is more complete than the rejected 12-frame study, but the wrist still meets both the bottom and a short lower-right source edge. Use the measured cut segments to place those edges outside the Canvas.",
+    "Native source is 480x360 and softly compressed; large upscaling remains soft.",
+    "No invented pixels or artificial wrist extension. All visible RGB pixels are from the official original frames."
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "source_frame": 33,
+      "source_time_seconds": 1.32,
+      "source_tip": [
+        208,
+        120
+      ],
+      "rect": [
+        0,
+        0,
+        304,
+        304
+      ],
+      "cut_edges": {
+        "frame": 0,
+        "source_frame": 33,
+        "source_time_seconds": 1.32,
+        "right_cut": {
+          "x": 288,
+          "alpha_gt8_y_spans": [
+            [
+              242,
+              255
+            ]
+          ],
+          "alpha_ge200_y_spans": [
+            [
+              243,
+              254
+            ]
+          ],
+          "opaque_pixel_count": 11
+        },
+        "bottom_cut": {
+          "y": 256,
+          "alpha_gt8_x_spans": [
+            [
+              126,
+              287
+            ]
+          ],
+          "alpha_ge200_x_spans": [
+            [
+              127,
+              286
+            ]
+          ],
+          "opaque_pixel_count": 159
+        }
+      }
+    },
+    {
+      "index": 1,
+      "source_frame": 34,
+      "source_time_seconds": 1.36,
+      "source_tip": [
+        208,
+        120
+      ],
+      "rect": [
+        304,
+        0,
+        304,
+        304
+      ],
+      "cut_edges": {
+        "frame": 1,
+        "source_frame": 34,
+        "source_time_seconds": 1.36,
+        "right_cut": {
+          "x": 288,
+          "alpha_gt8_y_spans": [
+            [
+              240,
+              255
+            ]
+          ],
+          "alpha_ge200_y_spans": [
+            [
+              241,
+              254
+            ]
+          ],
+          "opaque_pixel_count": 13
+        },
+        "bottom_cut": {
+          "y": 256,
+          "alpha_gt8_x_spans": [
+            [
+              126,
+              287
+            ]
+          ],
+          "alpha_ge200_x_spans": [
+            [
+              127,
+              286
+            ]
+          ],
+          "opaque_pixel_count": 159
+        }
+      }
+    },
+    {
+      "index": 2,
+      "source_frame": 35,
+      "source_time_seconds": 1.4,
+      "source_tip": [
+        212,
+        104
+      ],
+      "rect": [
+        608,
+        0,
+        304,
+        304
+      ],
+      "cut_edges": {
+        "frame": 2,
+        "source_frame": 35,
+        "source_time_seconds": 1.4,
+        "right_cut": {
+          "x": 284,
+          "alpha_gt8_y_spans": [
+            [
+              240,
+              271
+            ]
+          ],
+          "alpha_ge200_y_spans": [
+            [
+              241,
+              270
+            ]
+          ],
+          "opaque_pixel_count": 29
+        },
+        "bottom_cut": {
+          "y": 272,
+          "alpha_gt8_x_spans": [
+            [
+              141,
+              283
+            ]
+          ],
+          "alpha_ge200_x_spans": [
+            [
+              142,
+              282
+            ]
+          ],
+          "opaque_pixel_count": 140
+        }
+      }
+    },
+    {
+      "index": 3,
+      "source_frame": 36,
+      "source_time_seconds": 1.44,
+      "source_tip": [
+        212,
+        104
+      ],
+      "rect": [
+        912,
+        0,
+        304,
+        304
+      ],
+      "cut_edges": {
+        "frame": 3,
+        "source_frame": 36,
+        "source_time_seconds": 1.44,
+        "right_cut": {
+          "x": 284,
+          "alpha_gt8_y_spans": [
+            [
+              242,
+              271
+            ]
+          ],
+          "alpha_ge200_y_spans": [
+            [
+              243,
+              270
+            ]
+          ],
+          "opaque_pixel_count": 27
+        },
+        "bottom_cut": {
+          "y": 272,
+          "alpha_gt8_x_spans": [
+            [
+              142,
+              283
+            ]
+          ],
+          "alpha_ge200_x_spans": [
+            [
+              143,
+              282
+            ]
+          ],
+          "opaque_pixel_count": 139
+        }
+      }
+    }
+  ],
+  "cut_edge_coordinates": "Tile coordinates. x/y are geometric source crop boundaries (one pixel beyond the final source pixel). Span endpoints are [inclusive, exclusive]. Cut pixels are measured at boundary-1; alpha_gt8 includes the feather, alpha_ge200 is the opaque interior.",
+  "sha256_webp": "5babed9b7719674bdf7f7274122809878f9652be53fc1ac4b8b68567ee4f2db2"
+}

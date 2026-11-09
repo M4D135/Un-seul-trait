@@ -1,3 +1,5 @@
+import { embeddedAudioBytes, measureOriginalEnvelope, originalVoiceAsset, ORIGINAL_VOICE_CLIPS, type ClipEnvelope, type OriginalVoiceClip } from './original-media';
+
 export type GameSound =
   | 'draw'
   | 'ready'
@@ -9,7 +11,8 @@ export type GameSound =
   | 'click';
 
 export type GameSpeech = 'waiting' | 'start' | 'grumble' | 'win' | 'ready' | 'call' | 'surprise' | 'thanks';
-export type VoiceMode = 'grammelot' | 'italian';
+export type VoiceMode = 'original' | 'grammelot' | 'italian';
+export type OriginalVoiceStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
 
 type Voice = {
   source: AudioScheduledSourceNode;
@@ -20,6 +23,8 @@ type MouthBeat = { start: number; end: number; strength: number };
 type PencilVoice = { source: AudioBufferSourceNode; filter: BiquadFilterNode; envelope: GainNode };
 type Vowel = 'a' | 'e' | 'i' | 'o' | 'u';
 type Syllable = readonly [vowel: Vowel, duration: number, pitch: number, endPitch: number, pause: number];
+type OriginalPlayback = { source: AudioBufferSourceNode; when: number; clip: OriginalVoiceClip; envelope: ClipEnvelope };
+type PendingOriginal = { epoch: number; requestedAt: number };
 
 const SPEECH_LINES: Record<GameSpeech, readonly string[]> = {
   waiting: ['Eh! Brum badà badà?', 'Ehi! Brrr, badabù?', 'Oh! Ma dai, brabadà!'],
@@ -106,8 +111,8 @@ const COOLDOWN: Record<GameSound, number> = {
 };
 
 /**
- * All sounds are generated locally. Construction is safe during SSR; call
- * unlock() from a pointer or keyboard gesture before the first sound.
+ * Local effects, optional synthetic speech, and documented original excerpts.
+ * Construction is safe during SSR; unlock() starts audio only from a gesture.
  */
 export class GameAudio {
   private context: AudioContext | null = null;
@@ -116,7 +121,19 @@ export class GameAudio {
   private glottalWave: PeriodicWave | null = null;
   private voices = new Set<Voice>();
   private pencil: PencilVoice | null = null;
-  private voiceMode: VoiceMode = 'grammelot';
+  private voiceMode: VoiceMode = 'original';
+  private originalBuffer: AudioBuffer | null = null;
+  private originalLoad: Promise<AudioBuffer | null> | null = null;
+  private originalAbort: AbortController | null = null;
+  private originalStatus: OriginalVoiceStatus = 'idle';
+  private originalFailedAt = -Infinity;
+  private originalGain = 1;
+  private originalPlayback: OriginalPlayback | null = null;
+  private originalEnvelopes = new Map<string, ClipEnvelope>();
+  private originalVariant = 0;
+  private pendingOriginal: PendingOriginal | null = null;
+  private speechEpoch = 0;
+  private contextReady: Promise<void> = Promise.resolve();
   private lastPlayed: Partial<Record<GameSound, number>> = {};
   private enabled = true;
   private volume = 0.4;
@@ -158,8 +175,9 @@ export class GameAudio {
 
       if (this.context.state !== 'running' && this.context.state !== 'closed') {
         // Starting/resuming happens only here, inside the caller's gesture.
-        void this.context.resume().catch(() => {});
+        this.contextReady = this.context.resume().catch(() => {});
       }
+      if (this.voiceMode === 'original') void this.preloadOriginal();
     } catch {
       // A browser without usable audio must still have a playable game.
     }
@@ -195,14 +213,17 @@ export class GameAudio {
     this.stopVoices();
   }
 
-  /** The default is entirely generated; the optional Italian voice must be installed locally. */
+  /** Original excerpts are never silently replaced with synthetic speech. */
   setVoiceMode(mode: VoiceMode): void {
-    if (mode !== 'grammelot' && mode !== 'italian') return;
+    if (mode !== 'original' && mode !== 'grammelot' && mode !== 'italian') return;
     if (mode === this.voiceMode) return;
     this.hush();
     this.voiceMode = mode;
     if (mode === 'italian' && this.gestureUnlocked) this.prepareSpeech();
+    if (mode === 'original' && this.gestureUnlocked) void this.preloadOriginal();
   }
+
+  getOriginalVoiceStatus(): OriginalVoiceStatus { return this.originalStatus; }
 
   /** Start paper friction after unlock(). Speed is measured in scene units/second. */
   startPencil(speed = 0): void {
@@ -260,14 +281,14 @@ export class GameAudio {
     }
   }
 
-  /** Short original Italian-sounding grammelot; never queues several phrases. */
+  /** At most one reaction, including an initial sample load; no native speech queue. */
   speak(kind: GameSpeech): void {
     if (this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0) return;
 
     const now = speechClock();
     const audioNow = this.context?.currentTime ?? 0;
     if (
-      this.utterance ||
+      this.utterance || this.originalPlayback || this.pendingOriginal ||
       this.mouthBeats.some((beat) => beat.end > audioNow) ||
       now - this.lastSpeechAt < 0.8 ||
       now - (this.lastSpoken[kind] ?? -Infinity) < SPEECH_COOLDOWN[kind]
@@ -277,6 +298,10 @@ export class GameAudio {
     this.lastSpoken[kind] = now;
     const variant = this.speechVariants[kind] ?? 0;
     this.speechVariants[kind] = variant + 1;
+    if (this.voiceMode === 'original') {
+      this.requestOriginal();
+      return;
+    }
     if (this.voiceMode === 'italian') {
       this.prepareSpeech();
       this.refreshItalianVoice();
@@ -339,7 +364,7 @@ export class GameAudio {
     this.playGrammelot(kind, variant);
   }
 
-  /** Mouth animation amplitude, from generated timing only; no microphone. */
+  /** Original mode follows the decoded sample's RMS envelope; no microphone. */
   getTalkAmount(): number {
     if (this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0) return 0;
 
@@ -354,6 +379,14 @@ export class GameAudio {
 
     if (!this.context || this.context.state !== 'running') return 0;
     const now = this.context.currentTime;
+    if (this.originalPlayback) {
+      const { when, clip, envelope } = this.originalPlayback;
+      const elapsed = now - when;
+      if (elapsed < 0 || elapsed >= clip.duration) return 0;
+      const position = elapsed / envelope.step, index = Math.floor(position), fraction = position - index;
+      const first = envelope.values[index] ?? 0, next = envelope.values[index + 1] ?? first;
+      return Math.min(1, Math.sqrt(Math.max(0, first + (next - first) * fraction)));
+    }
     const beat = this.mouthBeats.find((item) => item.start <= now && item.end > now);
     if (!beat) return 0;
     const progress = (now - beat.start) / (beat.end - beat.start);
@@ -362,6 +395,7 @@ export class GameAudio {
   }
 
   play(kind: GameSound): void {
+    if (kind === 'grumble' && this.voiceMode === 'original') { this.speak('grumble'); return; }
     const context = this.context;
     if (
       this.disposed ||
@@ -433,6 +467,7 @@ export class GameAudio {
     this.disposed = true;
     this.stopSpeech();
     this.stopVoices();
+    this.originalAbort?.abort();
     try {
       this.synthesis?.removeEventListener('voiceschanged', this.onVoicesChanged);
       this.master?.disconnect();
@@ -446,6 +481,10 @@ export class GameAudio {
     this.glottalWave = null;
     this.synthesis = null;
     this.italianVoice = null;
+    this.originalBuffer = null;
+    this.originalLoad = null;
+    this.originalAbort = null;
+    this.originalEnvelopes.clear();
     this.lastPlayed = {};
     this.lastSpoken = {};
   }
@@ -502,14 +541,105 @@ export class GameAudio {
   }
 
   private stopSpeech(): void {
+    this.speechEpoch++;
+    this.pendingOriginal = null;
+    if (this.originalPlayback) {
+      try { this.originalPlayback.source.stop(); } catch {}
+      this.originalPlayback = null;
+    }
     this.releaseUtterance(true);
     this.mouthBeats = [];
+  }
+
+  private preloadOriginal(): Promise<AudioBuffer | null> {
+    if (this.originalBuffer) return Promise.resolve(this.originalBuffer);
+    if (this.originalLoad) return this.originalLoad;
+    const context = this.context;
+    if (this.disposed || !this.gestureUnlocked || !context || context.state === 'closed') return Promise.resolve(null);
+    if (speechClock() - this.originalFailedAt < 5) return Promise.resolve(null);
+    const url = originalVoiceAsset();
+    if (!url) { this.originalStatus = 'unavailable'; return Promise.resolve(null); }
+    const controller = new AbortController();
+    this.originalAbort = controller;
+    this.originalStatus = 'loading';
+    const load = async (): Promise<AudioBuffer | null> => {
+      try {
+        let bytes = embeddedAudioBytes(url);
+        if (!bytes) {
+          const response = await fetch(url, { signal: controller.signal, credentials: 'same-origin', cache: 'force-cache' });
+          if (!response.ok) throw new Error('Original voice asset unavailable.');
+          bytes = await response.arrayBuffer();
+        }
+        const buffer = await context.decodeAudioData(bytes);
+        if (this.disposed || this.context !== context || controller.signal.aborted) return null;
+        if (!buffer || buffer.duration < 2.905) throw new Error('Incomplete original voice atlas.');
+        const envelopes = new Map(ORIGINAL_VOICE_CLIPS.map(clip => [clip.id, measureOriginalEnvelope(buffer, clip)]));
+        let peak = 0;
+        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+          for (const sample of buffer.getChannelData(channel)) peak = Math.max(peak, Math.abs(sample));
+        }
+        // The source atlas is quiet. Apply one fixed playback level to all clips,
+        // preserving their relative loudness, pitch, waveform and source timing.
+        this.originalGain = peak > .00001 ? Math.min(8, .65 / peak) : 1;
+        this.originalBuffer = buffer;
+        this.originalEnvelopes = envelopes;
+        this.originalStatus = 'ready';
+        return buffer;
+      } catch {
+        if (!this.disposed) { this.originalStatus = 'unavailable'; this.originalFailedAt = speechClock(); }
+        return null;
+      } finally {
+        if (this.originalAbort === controller) this.originalAbort = null;
+      }
+    };
+    const task = load();
+    this.originalLoad = task;
+    void task.then(() => { if (this.originalLoad === task) this.originalLoad = null; });
+    return task;
+  }
+
+  private requestOriginal(): void {
+    const request: PendingOriginal = { epoch: this.speechEpoch, requestedAt: speechClock() };
+    this.pendingOriginal = request;
+    void Promise.all([this.preloadOriginal(), this.contextReady]).then(([buffer]) => {
+      if (this.pendingOriginal !== request) return;
+      this.pendingOriginal = null;
+      if (!buffer || request.epoch !== this.speechEpoch || speechClock() - request.requestedAt > 1.2
+        || this.disposed || !this.enabled || this.volume === 0 || this.voiceMode !== 'original'
+        || !this.context || this.context.state !== 'running') return;
+      this.playOriginal(buffer);
+    });
+  }
+
+  private playOriginal(buffer: AudioBuffer): void {
+    const context = this.context, master = this.master;
+    if (!context || !master || this.originalPlayback || this.utterance || this.disposed) return;
+    const clip = ORIGINAL_VOICE_CLIPS[this.originalVariant++ % ORIGINAL_VOICE_CLIPS.length];
+    const envelope = this.originalEnvelopes.get(clip.id);
+    if (!envelope) return;
+    try {
+      const source = context.createBufferSource();
+      const level = context.createGain();
+      source.buffer = buffer;
+      source.playbackRate.value = 1;
+      level.gain.value = this.originalGain;
+      source.connect(level);
+      level.connect(master);
+      const when = context.currentTime + 0.006;
+      this.originalPlayback = { source, when, clip, envelope };
+      this.track(source, [source, level]);
+      // Exact source pitch/timing: no voice filter, fade, invented phrase or resynthesis.
+      source.start(when, clip.offset, clip.duration);
+    } catch {
+      this.stopVoices();
+      this.originalStatus = 'unavailable';
+    }
   }
 
   private playGrammelot(kind: GameSpeech, variant: number): void {
     const context = this.context;
     if (
-      this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0 ||
+      this.voiceMode === 'original' || this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0 ||
       !context || !this.master || context.state === 'closed'
     ) return;
 
@@ -553,11 +683,13 @@ export class GameAudio {
       source.onended = null;
       this.voices.delete(voice);
       if (this.pencil?.source === source) this.pencil = null;
+      if (this.originalPlayback?.source === source) this.originalPlayback = null;
     };
   }
 
   private stopVoices(): void {
     this.pencil = null;
+    this.originalPlayback = null;
     for (const voice of this.voices) {
       try { voice.source.stop(); } catch {}
       for (const node of voice.nodes) {
@@ -687,3 +819,4 @@ export class GameAudio {
     source.stop(when + duration + 0.025);
   }
 }
+

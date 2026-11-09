@@ -1,15 +1,18 @@
 type Point = {x: number; y: number};
 
-// The portable build embeds this authored image; ordinary hosting uses a relative URL.
-declare const __TRAIT_HAND_ASSET__: string | undefined;
+// Four photographed frames from the original film. See the public provenance manifest.
+// The portable build embeds the same WebP bytes; ordinary hosting uses a relative URL.
+declare const __TRAIT_ORIGINAL_HAND_ASSET__: string | undefined;
 
 export type DrawingHandOptions = {
   mode?: 'draw' | 'point' | 'tap';
   /** Choose the entrance side away from the character without moving the pencil point. */
   hero?: Point;
+  /** World-space lower edge, so the photographed wrist always exits the frame. */
+  bottom?: number;
 };
 
-/** Animated photographic-style image, rotated around its pencil point. */
+/** Original photographed hand, with its pencil point locked to the player's stroke. */
 export class DrawingHand {
   private image: HTMLImageElement | null = null;
   private opacity = 0;
@@ -18,6 +21,7 @@ export class DrawingHand {
   private previous: Point | null = null;
   private leaving = 0;
   private elapsed = 0;
+  private filmTime = 0;
   private side = 1;
   private mode: 'draw' | 'point' | 'tap' = 'draw';
 
@@ -25,9 +29,9 @@ export class DrawingHand {
     if (typeof Image !== 'undefined') {
       this.image = new Image();
       this.image.decoding = 'async';
-      this.image.src = typeof __TRAIT_HAND_ASSET__ !== 'undefined'
-        ? __TRAIT_HAND_ASSET__
-        : new URL('drawing-hand.png',document.baseURI).href;
+      this.image.src = typeof __TRAIT_ORIGINAL_HAND_ASSET__ !== 'undefined'
+        ? __TRAIT_ORIGINAL_HAND_ASSET__
+        : new URL('original-hand-atlas.webp',document.baseURI).href;
     }
   }
 
@@ -46,6 +50,7 @@ export class DrawingHand {
       if (this.previous) {
         const dx = tip.x - this.previous.x, dy = tip.y - this.previous.y;
         if (Math.hypot(dx, dy) > .2) {
+          this.filmTime += dt;
           const wanted = Math.max(-.055, Math.min(.055, Math.atan2(dy, Math.max(6, Math.abs(dx))) * .055));
           this.angle += (wanted - this.angle) * Math.min(1, dt * 14);
         }
@@ -61,19 +66,25 @@ export class DrawingHand {
       this.opacity = reducedMotion ? 0 : Math.max(0, this.opacity - dt * 4.2);
     }
     if (!this.last || this.opacity <= 0 || !this.image?.complete || !this.image.naturalWidth) return;
-    // Overscan the forearm so its cutout edge remains outside the stage.
-    const width = mode==='draw'?760:660;
-    const height = width * this.image.naturalHeight / this.image.naturalWidth;
     const lift = tip ? 0 : Math.min(1, this.leaving * 4);
     ctx.save();
     ctx.globalAlpha = this.opacity;
     ctx.translate(this.last.x + this.side*lift*82,this.last.y + lift*52);
     const touch=mode==='tap'?Math.sin(Math.min(1,this.elapsed/.32)*Math.PI)*.045:0;
     const arrival=(1-this.opacity)*.045;
-    ctx.rotate(this.side*(.32+(reducedMotion?0:this.angle+lift*.08+arrival+touch)));
+    const rotation=.2+(reducedMotion?0:this.angle+lift*.08+arrival+touch);
+    ctx.rotate(this.side*rotation);
     ctx.scale(this.side,1);
-    // Alpha silhouette: pencil tip is (74,379) in the 1254-square photo.
-    ctx.drawImage(this.image, -width * 74 / 1254, -height * 379 / 1254, width, height);
+    // These are the earliest source-frame cut edges across all four poses,
+    // relative to the measured (16,16) pencil tip. Mirroring leaves their y
+    // projection unchanged. Scale only as far as necessary to hide those cuts.
+    const cutDepth=Math.min(...[[272,224],[110,240],[268,224],[125,256]].map(([x,y])=>x*Math.sin(rotation)+y*Math.cos(rotation)));
+    const needed=(options.bottom??this.last.y+340)-this.last.y+24;
+    const magnification=Math.max((mode==='draw'?560:500)/304,needed/cutDepth);
+    const size=304*magnification;
+    const order=[0,1,2,3,2,1];
+    const frame=reducedMotion?0:order[Math.floor(this.filmTime*25)%order.length];
+    ctx.drawImage(this.image,frame*304,0,304,304,-16*magnification,-16*magnification,size,size);
     ctx.restore();
   }
 
@@ -84,6 +95,7 @@ export class DrawingHand {
     this.angle = 0;
     this.leaving = 0;
     this.elapsed = 0;
+    this.filmTime = 0;
     this.side = 1;
     this.mode = 'draw';
   }

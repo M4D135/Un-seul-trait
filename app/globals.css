@@ -29,7 +29,6 @@
 .drawing-tool-actions button:hover{background:#ffffff25}
 .configure-controls-link{display:flex;align-items:center;gap:10px;margin:18px 0 4px;padding:12px 15px;border:1px solid var(--border);border-radius:9px;background:var(--paper-deep);color:#41544a;font-size:12px}
 .controls-dialog-actions{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:22px}
-@media(max-width:580px){.player-drawing-tools{left:17px;right:17px;top:69px;align-items:flex-start;gap:10px;flex-direction:column}.player-drawing-tools>div:first-child{font-size:12px;gap:8px}.player-drawing-tools small{font-size:9px;margin-top:4px}.drawing-tool-actions button{padding:8px 11px;font-size:10px}.controls-dialog-actions{gap:8px}.controls-dialog-actions .quiet-button{font-size:10px;padding:9px 0}}
 .platform-hud{position:absolute;z-index:3;top:24px;left:27px;right:27px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
 .platform-hud-left{display:flex;align-items:center;gap:24px}
 .death-count{display:flex;align-items:center;gap:7px;font:12px ui-monospace,SFMono-Regular,monospace;color:#fff5e8b3}
@@ -40,7 +39,7 @@
 .platform-stage-actions button:hover{background:#ffffff22;color:#fff}
 .hand-callout{position:absolute;z-index:3;left:50%;top:80px;transform:translateX(-50%);display:flex;align-items:center;gap:11px;border:1px solid #f7d89980;background:#082d4d66;backdrop-filter:blur(8px);padding:12px 17px;border-radius:11px;color:#fff8e4;font-size:13px;white-space:nowrap;pointer-events:none}
 .hand-callout kbd{background:#fff8df;color:#214d61;border:0;box-shadow:none;font-size:11px;padding:4px 7px;margin-left:8px}
-.platform-dock{background:#fffefa;display:flex;align-items:center;gap:24px;min-height:94px;padding:17px 25px}
+.platform-dock{background:#fffefa;display:flex;align-items:center;gap:18px;min-height:94px;padding:17px 25px}
 .movement-controls{display:flex;align-items:center;gap:16px}
 .control-caption{font:8px ui-monospace,SFMono-Regular,monospace;letter-spacing:1px;color:#8f948a}
 .direction-buttons{display:flex;gap:6px}
@@ -65,13 +64,8 @@
 .death-caption span{display:block;font:12px Arial,sans-serif;letter-spacing:.2px;margin-top:14px;white-space:nowrap}
 .platform-section.expanded .platform-stage{height:auto;min-height:0;flex:1}
 .platform-section.expanded .platform-dock{flex-shrink:0}
-@media(min-width:1600px){.platform-stage{height:72vh;max-height:800px}.platform-app .game-wrap{max-width:1800px}}
-@media(max-width:1050px){.platform-app .game-wrap{padding:0 20px}.platform-dock{gap:15px;padding:15px 19px}.control-caption{display:none}.hand-button{min-width:230px}.platform-dock-divider{margin:0}.platform-edition{display:none}}
-@media(max-width:760px){.platform-app .site-header{padding:0 20px}.platform-dock{flex-wrap:wrap;gap:12px}.movement-controls{flex:1}.direction-button{width:51px;height:48px}.crouch-button{min-width:143px;height:49px}.platform-dock-divider{display:none}.hand-button{flex:1;height:48px}.platform-utility{margin-left:auto}.platform-hud{left:19px;right:19px;top:21px}.journey-track{left:19px;right:19px;top:50px}.platform-stage{height:57vh}.platform-app .feedback-row p{font-size:11px}}
-@media(max-width:580px){.platform-app .site-header{height:62px;padding:0 15px}.platform-app .brand{font-size:24px}.platform-app .brand-mark{width:36px}.platform-app .game-wrap{padding:0 10px}.platform-app .scene-heading{height:66px;padding:0 5px}.platform-app h1{font-size:23px}.platform-stage{height:calc(100svh - 316px);min-height:350px;max-height:610px}.platform-dock{padding:12px 13px;gap:10px}.movement-controls{flex:initial}.direction-button{width:54px;height:47px}.direction-buttons{gap:7px}.crouch-button{flex:1;min-width:125px;height:47px}.crouch-button>span{flex-direction:row;align-items:center;gap:8px;font-size:12px}.crouch-button small{font-size:7px}.hand-button{flex-basis:calc(100% - 93px);min-width:0;height:47px;padding:0 11px;gap:9px}.hand-button>span{font-size:12px;gap:4px}.hand-button small{font-size:7px;max-width:170px}.hand-button>svg:last-child{display:none}.platform-utility{gap:0}.platform-utility .icon-button{width:35px;height:42px}.hand-callout{top:68px;gap:7px;padding:10px 11px;font-size:11px;max-width:calc(100% - 32px)}.hand-callout>span{overflow:hidden;text-overflow:ellipsis}.hand-callout kbd{margin-left:2px}.platform-hud-left{gap:14px}.death-count{font-size:10px}.platform-stage-actions{bottom:12px;right:12px}.platform-stage-actions button{width:33px;height:33px}.platform-app .feedback-row{padding:12px 5px;min-height:54px}.platform-app .feedback-row p{font-size:10px;line-height:1.5}.platform-app .site-footer{padding:10px 4px 16px;gap:5px;font-size:8px}.platform-section.expanded .platform-dock{padding:10px 13px;gap:8px}}
 
 /* Companion adventure: two complementary actions, readable on a small screen. */
-.platform-dock{gap:18px}
 .platform-dock .control-caption{display:none}
 .platform-dock .hand-button{min-width:218px;flex:1}
 .manipulate-button{display:flex;align-items:center;justify-content:center;gap:11px;min-width:147px;height:55px;padding:0 17px;border:1px solid transparent;border-radius:11px;background:#f0eee4;color:#7a7e71;touch-action:manipulation}
@@ -105,9 +99,324 @@
 .voice-choice button[aria-pressed=true]{background:#fffefa;box-shadow:0 1px 4px #23392b12;color:#314b40}
 .voice-choice button:hover{color:#243d31}
 .platform-app .game-dialog .setting-row{padding:19px 0;margin-top:14px}
-@media(max-width:1100px){.platform-dock{gap:10px;padding:15px}.platform-dock .hand-button{min-width:200px;padding:0 12px}.platform-dock .crouch-button{min-width:130px}.manipulate-button{min-width:125px;padding:0 12px}.platform-dock-divider{display:none}}
-@media(max-width:800px){.header-keys{display:flex}.platform-dock{display:grid;grid-template-columns:1fr 1fr;gap:10px}.movement-controls{justify-content:center}.direction-buttons{width:100%}.direction-button{flex:1}.platform-dock .crouch-button{width:100%}.platform-dock .hand-button{min-width:0;max-width:none;width:100%;height:49px}.manipulate-button{width:100%;height:49px}.platform-utility{display:none}.hand-button>svg:last-child{display:none}.hand-button>span{font-size:12px}.hand-button small{max-width:190px;font-size:7px}.platform-stage{min-height:360px;height:calc(100svh - 315px)}}
-@media(max-width:580px){.platform-dock{grid-template-columns:1fr 1fr;padding:11px;gap:8px}.direction-buttons{gap:7px}.direction-button{height:48px}.platform-dock .crouch-button{height:48px;min-width:0}.platform-dock .hand-button{gap:8px;padding:0 10px;height:49px}.hand-button>span{font-size:11px}.hand-button small{max-width:125px;font-size:6.5px}.hand-button>svg{width:18px;flex:none}.manipulate-button{gap:9px;min-width:0;height:49px}.manipulate-button>span{font-size:12px}.manipulate-button small{font-size:8px}.platform-app .brand{font-size:22px;gap:5px}.platform-app .brand-mark{width:32px}.header-keys{width:30px}.platform-app .header-right .icon-button{width:30px}.platform-app .site-header{gap:5px}.platform-app h1{font-size:21px}.level-grid{grid-template-columns:repeat(2,1fr)}.level-preview{height:92px}.level-info>strong{font-size:11px}.level-mechanics{font-size:7px}.platform-stage{min-height:340px}.voice-choice button{font-size:11px}.win-cooperation{font-size:9px}.platform-section.expanded .platform-dock{display:grid;padding:9px 13px}}
-@media(max-height:580px) and (min-width:700px){.platform-section.expanded .platform-dock{display:flex;min-height:64px;padding:8px 14px}.platform-section.expanded .movement-controls{flex:none}.platform-section.expanded .direction-buttons{width:100px}.platform-section.expanded .crouch-button{width:120px}.platform-section.expanded .hand-button{width:auto}.platform-section.expanded .manipulate-button{width:auto}}
 
 .crouch-button.is-active{background:#203b30;box-shadow:inset 0 0 0 2px #d9e2c2}
+
+/* Responsive platformer layout. The desktop rules above stay unchanged. */
+.platform-stage-actions .stage-settings-button { display: none; }
+
+@media (min-width: 1600px) {
+  .platform-stage { height: 72vh; max-height: 800px; }
+  .platform-app .game-wrap { max-width: 1800px; }
+}
+
+@media (max-width: 1100px) and (min-width: 901px) {
+  .platform-app .game-wrap { padding: 0 20px; }
+  .platform-app .site-header { padding: 0 24px; }
+  .platform-edition { display: none; }
+  .platform-dock { gap: 10px; padding: 15px; }
+  .platform-dock .hand-button { min-width: 200px; padding: 0 12px; }
+  .platform-dock .crouch-button { min-width: 130px; }
+  .manipulate-button { min-width: 125px; padding: 0 12px; }
+  .platform-dock-divider { display: none; }
+}
+
+/* One viewport for play; dialogs own their vertical scroll instead of the page. */
+@media (max-width: 900px), (max-height: 540px) and (max-width: 1180px) {
+  body:has(.platform-app) { overflow: hidden; overscroll-behavior: none; }
+  .platform-app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100svh;
+    height: 100dvh;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .platform-app .site-header {
+    flex: 0 0 auto;
+    width: 100%;
+    height: calc(48px + env(safe-area-inset-top, 0px));
+    min-height: 48px;
+    max-width: none;
+    padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+    gap: 8px;
+  }
+  .platform-app .brand { min-width: 0; min-height: 48px; gap: 6px; font-size: 21px; letter-spacing: -.9px; }
+  .platform-app .brand-mark { width: 30px; height: 32px; }
+  .platform-app .site-header nav,
+  .platform-app .platform-edition,
+  .platform-app .header-keys { display: none; }
+  .platform-app .header-right { flex: none; gap: 0; margin-left: auto; }
+  .platform-app .header-right .icon-button { width: 48px; height: 48px; }
+  .platform-app .game-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .platform-app .scene-heading {
+    flex: 0 0 40px;
+    height: 40px;
+    min-height: 0;
+    padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+    gap: 6px;
+  }
+  .platform-app .scene-title { flex: 1; min-width: 0; gap: 9px; }
+  .platform-app .chapter { flex: none; display: flex; flex-wrap: nowrap; max-width: none; gap: 4px; font-size: 8px; }
+  .platform-app .chapter strong { font-size: 11px; }
+  .platform-app .chapter > span,
+  .platform-app .heading-divider,
+  .platform-app .progress-dots,
+  .platform-app .progress-summary > span { display: none; }
+  .platform-app h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; line-height: 1.25; letter-spacing: -.35px; }
+  .platform-app .progress-summary { flex: none; justify-content: center; width: 48px; min-height: 40px; padding: 0; }
+  .platform-app .progress-summary > svg { display: block; width: 20px; height: 20px; }
+  .platform-app .platform-section {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .platform-app .platform-section .platform-stage {
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+  .platform-app .platform-stage canvas { width: 100%; height: 100%; touch-action: none; -webkit-user-select: none; user-select: none; }
+  .platform-app .platform-hud { top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); min-height: 22px; gap: 10px; }
+  .platform-app .platform-hud-left { min-width: 0; gap: 12px; }
+  .platform-app .status-pill { gap: 6px; font-size: 9px; letter-spacing: .55px; white-space: nowrap; }
+  .platform-app .death-count { flex: none; gap: 5px; font-size: 11px; }
+  .platform-app .stage-stars { flex: none; gap: 5px; }
+  .platform-app .stage-stars svg { width: 18px; height: 18px; }
+  .platform-app .journey-track { top: 41px; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+  .platform-app .hand-callout {
+    top: 54px;
+    max-width: calc(100% - 28px);
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: normal;
+    text-align: center;
+  }
+  .platform-app .hand-callout > span { min-width: 0; }
+  .platform-app .hand-callout kbd { display: none; }
+  .platform-app .platform-stage-actions { right: max(8px, env(safe-area-inset-right, 0px)); bottom: 8px; gap: 4px; }
+  .platform-app .platform-stage-actions button { width: 48px; height: 48px; background: #10374b35; border: 1px solid #ffffff20; border-radius: 12px; }
+  .platform-app .platform-stage-actions .stage-retry-button,
+  .platform-app .platform-stage-actions .stage-cinema-button { display: none; }
+  .platform-app .platform-stage-actions .stage-settings-button { display: flex; }
+
+  /* The middle column is flexible space, keeping the two thumb groups apart. */
+  .platform-app .platform-dock,
+  .platform-app .platform-section.expanded .platform-dock {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(104px, 128px) minmax(0, 1fr) minmax(72px, 88px) minmax(72px, 88px);
+    align-items: center;
+    min-height: 60px;
+    padding: 4px max(12px, env(safe-area-inset-right, 0px)) 4px max(12px, env(safe-area-inset-left, 0px));
+    gap: 8px;
+    border-top: 1px solid #e8e8de;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .platform-app .movement-controls { grid-column: 1; grid-row: 1; min-width: 0; width: 100%; justify-content: flex-start; }
+  .platform-app .direction-buttons { display: grid; grid-template-columns: repeat(2, minmax(48px, 1fr)); width: 100%; gap: 8px; }
+  .platform-app .direction-button { width: 100%; min-width: 48px; height: 52px; min-height: 48px; border-radius: 12px; }
+  .platform-app .platform-dock .crouch-button,
+  .platform-app .platform-dock .manipulate-button,
+  .platform-app .platform-dock .hand-button.is-cancel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    height: 52px;
+    min-height: 48px;
+    padding: 4px;
+    gap: 3px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .platform-app .platform-dock .crouch-button { grid-column: 3; grid-row: 1; }
+  .platform-app .platform-dock .manipulate-button,
+  .platform-app .platform-dock .hand-button.is-cancel { grid-column: 4; grid-row: 1; }
+  .platform-app .platform-dock .crouch-button > span,
+  .platform-app .platform-dock .manipulate-button > span,
+  .platform-app .platform-dock .hand-button.is-cancel > span { display: block; font-size: 11px; font-weight: 600; line-height: 1.1; white-space: normal; }
+  .platform-app .platform-dock .crouch-button > svg,
+  .platform-app .platform-dock .manipulate-button > svg,
+  .platform-app .platform-dock .hand-button.is-cancel > svg { width: 20px; height: 20px; }
+  .platform-app .platform-dock .hand-button.is-cancel { gap: 2px; }
+  .platform-app .platform-dock .hand-button.is-cancel > span { font-size: 10px; line-height: 1.05; }
+  .platform-app .platform-dock .hand-button.is-cancel > svg { width: 18px; height: 18px; }
+  .platform-app .platform-dock small,
+  .platform-app .platform-dock .hand-button > svg:last-child,
+  .platform-app .platform-dock .control-caption,
+  .platform-app .platform-dock-divider,
+  .platform-app .platform-utility,
+  .platform-app .platform-dock .hand-button:not(.is-cancel),
+  .platform-app .platform-dock .hand-button.is-cancel ~ .manipulate-button { display: none; }
+
+  .platform-app .feedback-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 48px;
+    margin: 0;
+    padding: 0 max(8px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(12px, env(safe-area-inset-left, 0px));
+    gap: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .platform-app .feedback-row p { min-width: 0; align-items: center; gap: 7px; font-size: 11px; line-height: 1.35; }
+  .platform-app .feedback-row p > svg { flex: none; margin: 0; }
+  .platform-app .feedback-row p > span { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .platform-app .settings-button { justify-content: center; width: 48px; min-height: 48px; padding: 0; border-radius: 12px; }
+  .platform-app .settings-button > span,
+  .platform-app .site-footer { display: none; }
+  .platform-app .settings-button > svg { width: 20px; height: 20px; }
+  .platform-app .player-drawing-tools { top: 49px; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); flex-direction: row; align-items: flex-start; gap: 8px; }
+  .platform-app .player-drawing-tools > div:first-child { min-width: 0; gap: 7px; font-size: 12px; line-height: 1.35; }
+  .platform-app .player-drawing-tools > div:first-child > svg { flex: none; width: 17px; height: 17px; margin-top: 3px; }
+  .platform-app .player-drawing-tools small { max-width: 210px; margin-top: 4px; font-size: 10px; line-height: 1.4; }
+  .platform-app .drawing-tool-actions { flex: none; gap: 5px; }
+  .platform-app .drawing-tool-actions button { justify-content: center; min-width: 48px; min-height: 48px; padding: 8px; border-radius: 10px; }
+  .platform-app .drawing-tool-actions button span { display: none; }
+  .platform-app .death-caption { font-size: 36px; }
+  .platform-app .death-caption span { font-size: 11px; }
+
+  /* Fullscreen hides the external info bar, so its safe-area moves to the dock. */
+  .platform-app .platform-section.expanded { width: 100%; height: 100svh; height: 100dvh; }
+  .platform-app .platform-section.expanded .platform-dock { padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
+  .platform-app .platform-section.expanded .platform-hud { top: calc(12px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .journey-track { top: calc(41px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .hand-callout { top: calc(54px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .player-drawing-tools { top: calc(49px + env(safe-area-inset-top, 0px)); }
+
+  .platform-app .pause-layer,
+  .platform-app .win-layer { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+  .platform-app .pause-layer { padding: 16px; }
+  .platform-app .pause-actions { gap: 10px; }
+  .platform-app .pause-resume { min-height: 56px; padding: 16px 22px; }
+  .platform-app .pause-secondary { min-height: 48px; padding: 10px 16px; }
+  .platform-app .win-layer { padding: 16px 12px; align-items: flex-start; }
+  .platform-app .win-card { width: min(100%, 410px); margin: auto; padding: 20px; }
+  .platform-app .win-card h2 { font-size: 27px; }
+  .platform-app .win-card p { font-size: 12px; }
+  .platform-app .win-stars { margin: 12px 0; }
+  .platform-app .win-buttons { gap: 8px; }
+  .platform-app .win-buttons button { min-height: 48px; }
+
+  /* Native dialogs become independent, scrollable screens on a phone. */
+  .platform-app .game-dialog,
+  .platform-app .levels-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100svh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    animation: none;
+  }
+  .platform-app .dialog-inner { max-width: 680px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .platform-app .dialog-top { position: sticky; top: 0; z-index: 2; min-height: calc(56px + env(safe-area-inset-top, 0px)); margin: 0 -4px 12px; padding-top: env(safe-area-inset-top, 0px); background: var(--paper); }
+  .platform-app .dialog-top .icon-button { width: 48px; height: 48px; }
+  .platform-app .game-dialog h2 { font-size: 31px; }
+  .platform-app .dialog-intro { font-size: 12px; line-height: 1.7; }
+  .platform-app .game-dialog .primary-button,
+  .platform-app .game-dialog .quiet-button,
+  .platform-app .configure-controls-link,
+  .platform-app .voice-choice button { min-height: 48px; }
+  .platform-app .configure-controls-link { width: 100%; text-align: left; }
+  .platform-app .controls-dialog-actions { flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .platform-app .controls-dialog-actions .quiet-button { padding: 8px 0; font-size: 11px; }
+  .platform-app .notebook-summary { flex-wrap: wrap; gap: 12px; font-size: 11px; }
+  .platform-app .level-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+  .platform-app .level-preview { height: 92px; }
+  .platform-app .level-info > strong { font-size: 12px; white-space: normal; }
+  .platform-app .level-mechanics { font-size: 9px; }
+  .platform-app .help-steps { gap: 22px; margin: 25px 0; }
+  .platform-app .help-steps h3 { font-size: 14px; }
+  .platform-app .help-steps p,
+  .platform-app .help-companion-note p { font-size: 12px; line-height: 1.7; }
+  .platform-app .game-dialog .setting-row { gap: 12px; padding: 16px 0; margin-top: 12px; }
+  .platform-app .setting-row h3 { font-size: 13px; }
+  .platform-app .setting-row p { font-size: 11px; line-height: 1.55; }
+  .platform-app .setting-volume input { min-height: 48px; }
+  .platform-app .game-dialog .toggle { position: relative; width: 64px; height: 48px; min-height: 48px; padding: 0; background: transparent; }
+  .platform-app .game-dialog .toggle::before { content: ''; position: absolute; inset: 10px 4px; border-radius: 14px; background: #d5dacd; }
+  .platform-app .game-dialog .toggle.on::before { background: #7e9775; }
+  .platform-app .game-dialog .toggle span { position: absolute; top: 14px; left: 8px; width: 20px; height: 20px; }
+  .platform-app .game-dialog .toggle.on span { transform: translateX(28px); }
+}
+
+@media (max-width: 360px) {
+  .platform-app .brand { font-size: 19px; }
+  .platform-app .brand-mark { width: 27px; }
+  .platform-app .scene-title { gap: 6px; }
+  .platform-app h1 { font-size: 16px; }
+  .platform-app .platform-dock { gap: 6px; padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+  .platform-app .platform-dock .crouch-button > span,
+  .platform-app .platform-dock .manipulate-button > span,
+  .platform-app .platform-dock .hand-button.is-cancel > span { font-size: 10px; }
+  .platform-app .platform-hud-left { gap: 8px; }
+  .platform-app .status-pill { font-size: 8px; letter-spacing: .3px; }
+  .platform-app .player-drawing-tools { gap: 5px; }
+  .platform-app .player-drawing-tools > div:first-child { font-size: 11px; gap: 5px; }
+  .platform-app .player-drawing-tools small { font-size: 9px; }
+}
+
+/* A short landscape viewport keeps the same thumb controls and a larger canvas. */
+@media (orientation: landscape) and (max-height: 540px) and (max-width: 1180px) {
+  .platform-app .scene-heading { display: none; }
+  .platform-app .feedback-row { display: none; }
+  .platform-app .site-header { height: calc(48px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-dock { padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); }
+  .platform-app .platform-hud { top: 12px; right: calc(max(8px, env(safe-area-inset-right, 0px)) + 160px); justify-content: flex-start; gap: 18px; }
+  .platform-app .platform-stage-actions { top: 4px; right: max(8px, env(safe-area-inset-right, 0px)); bottom: auto; }
+  .platform-app .journey-track { top: 45px; }
+  .platform-app .hand-callout { top: 58px; }
+  .platform-app .player-drawing-tools { top: 55px; }
+  .platform-app .player-drawing-tools small { display: none; }
+  .platform-app .platform-section.expanded .platform-stage-actions { top: calc(4px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .journey-track { top: calc(45px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .hand-callout { top: calc(58px + env(safe-area-inset-top, 0px)); }
+  .platform-app .platform-section.expanded .player-drawing-tools { top: calc(55px + env(safe-area-inset-top, 0px)); }
+  .platform-app .dialog-inner { max-width: 720px; }
+  .platform-app .level-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
