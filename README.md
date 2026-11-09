@@ -2,11 +2,15 @@
 
 **Dessine le passage. Déplace le décor. Aide un personnage impatient à aller jusqu’au bout.**
 
-Un jeu de plateforme et de dessin en français, inspiré de *La Linea* d’Osvaldo Cavandoli. Le terrain, le personnage et ses réactions prennent forme sur un fond uni. La main suit ton crayon et intervient sur les objets du décor.
+Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. Le terrain, le personnage et ses réactions prennent forme sur un fond uni. La main suit ton crayon et intervient sur les objets du décor.
 
 Projet de fan non officiel. Les illustrations et les sons du dessin animé ne sont pas distribués avec le jeu ; voir [les crédits](CREDITS.md).
 
-## Jouer
+## Jouer sans compiler
+
+Télécharge le fichier **Un-seul-trait-1.1.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Tout le jeu est inclus dans ce fichier.
+
+## Lancer les sources
 
 Avec **Node.js 22.13 ou plus récent** installé, depuis le dossier du projet :
 
@@ -23,7 +27,7 @@ Ouvre l’adresse affichée dans le terminal. Aucun compte, serveur de données,
 | --- | --- |
 | Aller à gauche | ← ou Q |
 | Aller à droite | → ou D |
-| Sauter | Espace ou ↑ |
+| Se baisser (maintenir) | ↓ ou S |
 | Dessiner un passage | E |
 | Actionner la main sur un objet proche | F ou Entrée |
 | Pause / reprendre | P ou Échap |
@@ -33,7 +37,7 @@ Les commandes se changent dans le menu **Commandes** : deux touches possibles pa
 
 Approche un passage manquant, ouvre le dessin, puis relie ses deux ancres à la souris ou au doigt. Le terrain suit le trait tracé. Un essai raté peut être repris ; un passage déjà construit peut être redessiné. Les objets manipulables portent une poignée : utilise-la directement ou appelle la main avec la commande d’interaction.
 
-Six parcours mêlent traits libres, plateformes mobiles, portes, roues et sauts. Le personnage réagit, interpelle le joueur et proteste lorsqu’un passage lui manque. Les drapeaux servent de points de reprise ; les constructions, les étoiles et les mécanismes résolus peuvent être retrouvés à la prochaine visite grâce à la sauvegarde locale du navigateur.
+Les six parcours se traversent en marchant, en se baissant, en dessinant et en manipulant les mécanismes. Le saut a été retiré du moteur et des commandes : Espace et ↑ ne déclenchent plus de mouvement par défaut. Le personnage réagit, interpelle le joueur et proteste lorsqu’un passage lui manque. Les drapeaux servent de points de reprise ; les constructions, les étoiles et les mécanismes résolus peuvent être retrouvés à la prochaine visite grâce à la sauvegarde locale du navigateur.
 
 ## Un seul fichier pour jouer hors ligne
 
@@ -56,7 +60,7 @@ La sauvegarde dépend du navigateur et de l’emplacement du jeu. En mode fichie
 
 ## Dessin, main et voix
 
-Le personnage est redessiné en contours vectoriels, avec une marche faite de silhouettes successives. Les poses d’attente, de saut et de réaction sont adaptées au jeu.
+Le personnage est redessiné en contours vectoriels, avec une marche faite de silhouettes successives. Les flexions, gestes des bras et poses d’attente suivent les références décrites dans [MOVEMENTS.md](docs/MOVEMENTS.md). Le personnage reste relié au terrain lorsqu’il marche ou se baisse ; une chute accidentelle reste possible.
 
 La main est une **image générée au rendu photographique, animée par le code** autour de la pointe du crayon. Il ne s’agit pas d’une nouvelle prise de vues filmée. Le grammelot est une synthèse originale produite localement avec Web Audio ; le mode italien optionnel utilise uniquement une voix installée sur l’appareil et revient à la synthèse si elle n’est pas disponible. Aucun enregistrement ni clonage de la voix originale n’est intégré.
 
@@ -70,7 +74,7 @@ npm run build
 npm run check
 ```
 
-Les tests couvrent les constructions, les mécanismes, les collisions, les points de reprise, la sauvegarde et les touches personnalisées. Ils sont compilés dans un dossier temporaire puis exécutés par le runner de tests de Node ; aucun navigateur ni service distant n’est requis.
+Les tests couvrent les constructions, les mécanismes, les collisions, la traversée sans saut, la posture baissée, les points de reprise, la sauvegarde et la migration des touches personnalisées. Ils sont compilés dans un dossier temporaire puis exécutés par le runner de tests de Node ; aucun navigateur ni service distant n’est requis.
 
 | Fichier ou dossier | Rôle |
 | --- | --- |

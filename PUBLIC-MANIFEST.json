@@ -18,23 +18,23 @@
     },
     {
       "path": "CREDITS.md",
-      "bytes": 2306,
-      "sha256": "018b61b0dac8108ca4be81921b28f89f0631aa8c52374ca5b84664df7200c004"
+      "bytes": 2698,
+      "sha256": "399e52a93d03abe6a1578a24e6bc5e5d23dee07cdd55cf9c6200f6b71a0760ca"
     },
     {
       "path": "README.md",
-      "bytes": 5254,
-      "sha256": "92aa083cb0fc796a7531216cef6ef11335438b36252a4148fd1fbce364a469dd"
+      "bytes": 5879,
+      "sha256": "94c68161a4586df47a1a182332379285d5a86eb2cd9c3ed8a38240675920aac7"
     },
     {
       "path": "app/globals.css",
-      "bytes": 34738,
-      "sha256": "b647d5dea985d256e1f1e45bbc97c43bff10d8a95d58946fb8570d88acc32fae"
+      "bytes": 34843,
+      "sha256": "47a26cfd1c0b43d7150df4b91eb172543b35256f87579dda9dd7975149738608"
     },
     {
       "path": "app/page.tsx",
-      "bytes": 44815,
-      "sha256": "1d4d1b3412a119a8189d75b3aa563c1ed7c308e0228be8eb0f483e19dbe10ee8"
+      "bytes": 45640,
+      "sha256": "ee7ff4b7789ce1f88cd3e0ae8ed4fb435d7e062145387f8b6d18a359cfbe86d7"
     },
     {
       "path": "components/trait/controls-config.module.css",
@@ -43,13 +43,18 @@
     },
     {
       "path": "components/trait/controls-config.tsx",
-      "bytes": 8742,
-      "sha256": "f932b509eed9115e0867c167d3624214c9517aee597bf88b227845f965807d48"
+      "bytes": 8748,
+      "sha256": "1511f680d9a53e0ca6cbe5a415e8c1982453437af306b2b42e36ba2899a414f3"
     },
     {
       "path": "docs/BUILD.md",
       "bytes": 4064,
       "sha256": "d336cb9f2fdcdd8349aa161312e0d449959b0410be9f6d447ef76c50b3c96595"
+    },
+    {
+      "path": "docs/MOVEMENTS.md",
+      "bytes": 3484,
+      "sha256": "bc1a89f02cec4110cfc63686b42f2680d8240b908f94682a9a240f2d028f6536"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -63,18 +68,18 @@
     },
     {
       "path": "lib/trait/cartoon-character.ts",
-      "bytes": 19631,
-      "sha256": "fe0720e6025e528b49134a4ea2c91483f2e085c0698bb1e39246791a9ce8c4c3"
+      "bytes": 21752,
+      "sha256": "5861f33a801720886273e68ada63cfce50932ac6f8a432862d3e7b434bdb552b"
     },
     {
       "path": "lib/trait/companion.ts",
-      "bytes": 8423,
-      "sha256": "160e6ab0e9dac5297cdbf7489ab6860e8aa977072baa6737f1a811f3f1f5e813"
+      "bytes": 8517,
+      "sha256": "2033e92966cf9017d94c95d03c84ebeb9516faa0eb1c7d0de5d6224c8c163043"
     },
     {
       "path": "lib/trait/controls.ts",
-      "bytes": 4602,
-      "sha256": "1c70091790930749527be4c97b1bcedd66b9d0f92417309a5f69d868613abbbc"
+      "bytes": 4876,
+      "sha256": "02536e05de52d45d21b6c3627496fa06e3ceff7b655534b91d7f3518dfa7b6ad"
     },
     {
       "path": "lib/trait/hand.ts",
@@ -88,23 +93,23 @@
     },
     {
       "path": "lib/trait/platform-levels.ts",
-      "bytes": 14450,
-      "sha256": "35807e648983971c89b954b6b289a88a84f3a6514ee4f90b12ad543362346896"
+      "bytes": 17020,
+      "sha256": "7be536080be5041b14a2dc250d434473f653ba74534f7bc3558ba06f31bb26ac"
     },
     {
       "path": "lib/trait/platform-mechanisms.ts",
-      "bytes": 11763,
-      "sha256": "5cf0db56deabe43c12443f86943bbf1c531533cab6f02a393abfc635cd3c6062"
+      "bytes": 11899,
+      "sha256": "89c8cdbd012878156ee62a9c026c20cf58b34bad0ecf3f60dcc518490eb012f7"
     },
     {
       "path": "lib/trait/platform-renderer.ts",
-      "bytes": 16751,
-      "sha256": "f09c158581c3ca46da08a7470eccf9650dc60a2e002b476f7427be067e431b0e"
+      "bytes": 16873,
+      "sha256": "554cb0a11e25079c6dcc7a494af21f446c7deb4bf6a14adcf0779d10806b4dab"
     },
     {
       "path": "lib/trait/platformer.ts",
-      "bytes": 20788,
-      "sha256": "ea301b2ed867c88c724da505bdfdef946e5145276f5d1b75c581f412aaa3e7f8"
+      "bytes": 21471,
+      "sha256": "938e2230b1306e2aedc921141768ba1902fcabba2308c4b105636cb9328fec45"
     },
     {
       "path": "lib/trait/progress.ts",
@@ -114,12 +119,12 @@
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "87da24430686de8bf689d93f82fa27e2803f97744c31070d246dbf196f10c2a9"
+      "sha256": "7e70620237b4921fdbb0cfa8466feaf239d0a9f59c69117ef48d25e8528d38f0"
     },
     {
       "path": "package.json",
-      "bytes": 943,
-      "sha256": "713074bae368c0c4493ff752e2143ecb01c1465049bac3d3999150bac9f3e130"
+      "bytes": 949,
+      "sha256": "9ef612383b2390284d3d025875f30b16af90722db748c86bacd56ddeb4e4e9be"
     },
     {
       "path": "public/drawing-hand.png",
@@ -133,8 +138,8 @@
     },
     {
       "path": "scripts/public-app/index.html",
-      "bytes": 672,
-      "sha256": "6ed901a6370e0404a66332fb2837250b0a6951448f65fade7756096f9031b56c"
+      "bytes": 677,
+      "sha256": "125ad535e29ad8d1ff7fa29eebffe93b1542feabfbba4e71a009f977d5987eac"
     },
     {
       "path": "scripts/public-app/main.tsx",
@@ -158,23 +163,23 @@
     },
     {
       "path": "tests/companion.test.ts",
-      "bytes": 6262,
-      "sha256": "20ed1ee1ed9ec1b9325386ee62ea830cd4930910afd94f53703eb409e9932847"
+      "bytes": 8221,
+      "sha256": "ee95468eb81e190a92f44f1e249e067d7cc718b4ccd39bcc55faea2ef118ce52"
     },
     {
       "path": "tests/controls.test.ts",
-      "bytes": 1630,
-      "sha256": "4a679ba807d2aa48e6f1e67e5ced58ba2480cb0a3992687e6672001a2f4eb401"
+      "bytes": 2441,
+      "sha256": "c4a2369c518b72010a908d5842bbeaf13a5c26514e9cf612c8cca21ddb59af6c"
     },
     {
       "path": "tests/platform-mechanisms.test.ts",
-      "bytes": 11677,
-      "sha256": "026c060e1980504f3168e4c77935cf56d5eef1897141f2eacd0b91cb5592018c"
+      "bytes": 15711,
+      "sha256": "c693c352ee910559eeee951ebe8d832ef68e1c1f6c33a8f1f5eddc72dff58217"
     },
     {
       "path": "tests/progress.test.ts",
-      "bytes": 3953,
-      "sha256": "0aa60bfe3132a0fbd1f65fb583c955f97842903a9084941db40769f7103d8751"
+      "bytes": 3955,
+      "sha256": "845ca05dfa6cfed8e7d3968d2bb38676a673584d33f2ce6f631b2731e3132252"
     },
     {
       "path": "tsconfig.json",

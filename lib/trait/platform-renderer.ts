@@ -134,14 +134,17 @@ export function drawPlatformScene(
 ) {
   const palette = PLATFORM_PALETTES[level.palette];
   const {player} = world;
-  const motion = world.phase==='won' ? 'happy' : world.phase==='drawing' ? (options.companion?'idle':'grumpy')
-    : !player.grounded ? (player.vy<0?'jump':'fall') : Math.abs(player.vx)>8 ? 'walk' : 'idle';
+  const moving=Math.abs(player.vx)>8;
+  const motion = !player.grounded ? 'fall' : player.crouching ? (moving?'crouch-walk':'crouch')
+    : world.phase==='won' ? 'happy' : world.phase==='drawing' ? (options.companion?'idle':'grumpy')
+    : moving ? 'walk' : 'idle';
   const companion=options.companion;
-  const canGesture=player.grounded&&Math.abs(player.vx)<=8;
+  const canGesture=player.grounded&&!player.crouching&&!moving;
   const facing=canGesture&&companion?.facing ? companion.facing : player.facing;
-  const pointerNear=options.pointer&&Math.hypot(options.pointer.x-player.x,options.pointer.y-(player.y-79))<90;
+  const headHeight=player.crouching?43:79;
+  const pointerNear=options.pointer&&Math.hypot(options.pointer.x-player.x,options.pointer.y-(player.y-headHeight))<90;
   const target=companion?.target??(pointerNear?options.pointer:null);
-  const look=target ? Math.max(-1,Math.min(1,(target.y-(player.y-79))/65)) : 0;
+  const look=target ? Math.max(-1,Math.min(1,(target.y-(player.y-headHeight))/65)) : 0;
   const speaking=companion?.speech&&companion.age<.72;
   const mouthBeat=speaking?[.15,.85,.25,.65][Math.floor(companion.age/.08)%4]:0;
   const actor = {

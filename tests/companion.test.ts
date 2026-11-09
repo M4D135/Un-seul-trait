@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createCompanionState, updateCompanion, type CompanionState } from '../lib/trait/companion';
-import { drawCartoonCharacter, type CartoonCharacterState } from '../lib/trait/cartoon-character';
+import { drawCartoonCharacter, getCharacterGroundSpan, type CartoonCharacterState } from '../lib/trait/cartoon-character';
 import { createWorld, type GameWorld, type PlatformLevel } from '../lib/trait/platformer';
 
 const dt = 1 / 60;
@@ -114,14 +114,49 @@ function drawingCommands(state: CartoonCharacterState) {
   return commands;
 }
 
-test('walking, jumping and falling take visual priority over an unfinished gesture', () => {
+test('walking, crouching and falling take visual priority over an unfinished gesture', () => {
   const state: CartoonCharacterState = {
     x: 200, y: 430, scale: .6, facing: -1, motion: 'idle', travel: 22.2, time: 1,
     talkAmount: 0, ink: '#fffdf6', background: '#064b8e', stroke: 3.8,
   };
   const gesture = { gesture: 'point' as const, gestureAge: .4, gestureDuration: 1.1 };
   assert.notDeepEqual(drawingCommands(state), drawingCommands({ ...state, ...gesture }), 'the test gesture is visible at rest');
-  for (const motion of ['walk', 'jump', 'fall'] as const) {
+  for (const motion of ['walk', 'crouch', 'crouch-walk', 'fall'] as const) {
     assert.deepEqual(drawingCommands({ ...state, motion, ...gesture }), drawingCommands({ ...state, motion }), motion);
+  }
+});
+
+test('touch detection follows the lowered head while crouching', () => {
+  const { level, world, state } = fixture();
+  world.player.crouching = true;
+  const acting = updateCompanion(state, world, level, dt, {
+    pointer: { x: world.player.x + 30, y: world.player.y - 24 }, touched: true,
+  });
+  assert.equal(acting.gesture, 'curious');
+  assert.equal(acting.speech, 'surprise');
+  assert.equal(world.player.crouching, true);
+});
+
+test('low silhouettes remain grounded in both directions and fit a lower visual envelope', () => {
+  for (const motion of ['crouch', 'crouch-walk'] as const) for (const facing of [-1, 1] as const) {
+    const state: CartoonCharacterState = {
+      x: 230, y: 430, scale: .6, facing, motion, travel: 29.6, time: 1,
+      talkAmount: 0, ink: '#fffdf6', background: '#064b8e', stroke: 3.8,
+    };
+    const commands = drawingCommands(state), points: [number, number][] = [];
+    let sx = 1, sy = 1, tx = 0, ty = 0;
+    for (const [method, ...args] of commands) {
+      if (method === 'translate') { tx += sx * args[0]; ty += sy * args[1]; }
+      else if (method === 'scale') { sx *= args[0]; sy *= args[1]; }
+      else if (['moveTo', 'lineTo', 'quadraticCurveTo', 'bezierCurveTo'].includes(method)) {
+        for (let i = 0; i < args.length; i += 2) points.push([tx + sx * args[i], ty + sy * args[i + 1]]);
+      }
+    }
+    const first = points[0], last = points.at(-1)!, span = getCharacterGroundSpan(state);
+    assert(Math.abs(first[1] - state.y) < .001 && Math.abs(last[1] - state.y) < .001);
+    assert(Math.abs(Math.min(first[0], last[0]) - span.left) < .001);
+    assert(Math.abs(Math.max(first[0], last[0]) - span.right) < .001);
+    assert(Math.min(...points.map(p => p[1])) >= state.y - 55, 'the head stays low instead of redrawing an upright body');
+    assert(!commands.some(([method]) => method === 'closePath'), 'the two feet must remain open to the floor');
   }
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useId, useRef, useState} from 'react';
-import {ArrowLeft, ArrowRight, ArrowUp, Check, Hand, Keyboard, Pause, Pencil, RotateCcw, X} from 'lucide-react';
+import {ArrowLeft, ArrowRight, ArrowDown, Check, Hand, Keyboard, Pause, Pencil, RotateCcw, X} from 'lucide-react';
 import {ACTION_IDS, ACTION_LABELS, DEFAULT_BINDINGS, keyLabel, normalizeKey, sanitizeBindings, type ActionId, type KeyBindings} from '../../lib/trait/controls';
 import styles from './controls-config.module.css';
 
@@ -11,7 +11,7 @@ export type ControlsConfigProps = {
 };
 type Capture = {action: ActionId; slot: 0 | 1};
 type Message = {text: string; error?: boolean};
-const icons = {left: ArrowLeft, right: ArrowRight, jump: ArrowUp, draw: Pencil, interact: Hand, pause: Pause, restart: RotateCcw};
+const icons = {left: ArrowLeft, right: ArrowRight, crouch: ArrowDown, draw: Pencil, interact: Hand, pause: Pause, restart: RotateCcw};
 const copyBindings = (bindings: KeyBindings): KeyBindings => Object.fromEntries(
   ACTION_IDS.map(action => [action, [...bindings[action]]]),
 ) as KeyBindings;

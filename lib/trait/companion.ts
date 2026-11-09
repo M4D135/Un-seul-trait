@@ -62,7 +62,7 @@ function needHelp(world: GameWorld, level: PlatformLevel): { key: string; target
   const views = getMechanismPositions(world, level);
   const gate = views.find(v => v.mechanism.type === 'gate'
     && (v.position.x - p.x) * p.facing > -15 && (v.position.x - p.x) * p.facing < 115
-    && v.position.y > p.y - 78 && v.position.y - v.mechanism.height < p.y + 4);
+    && v.position.y > p.y - (p.crouching ? 44 : 78) && v.position.y - v.mechanism.height < p.y + 4);
   if (gate) return { key: gate.mechanism.id, target: gate.handle, edge: false };
   if (world.phase === 'drawing') {
     const drawing = level.drawings.find(d => d.id === world.activeDrawing?.id);
@@ -131,7 +131,8 @@ export function updateCompanion(
   }
   state.previousPhase = world.phase;
 
-  const nearHead = !!options.pointer && Math.hypot(options.pointer.x - p.x, options.pointer.y - (p.y - 79)) < 48;
+  const headHeight = p.crouching ? 43 : 79;
+  const nearHead = !!options.pointer && Math.hypot(options.pointer.x - p.x, options.pointer.y - (p.y - headHeight)) < 48;
   if (options.touched && nearHead && state.time >= state.touchAfter && world.phase !== 'won') {
     start(state, world, 'curious', options.pointer ?? undefined, 'surprise');
     state.touchAfter = state.time + 1.8;
@@ -145,7 +146,7 @@ export function updateCompanion(
     const radius = hazard.type === 'gear' ? hazard.r : hazard.w * .5;
     const x = hazard.type === 'gear' ? position.x : position.x + hazard.w * .5;
     return (x - p.x) * p.facing > -15 && (x - p.x) * p.facing < radius + 98
-      && Math.abs(position.y - (p.y - 34)) < (hazard.type === 'gear' ? radius + 56 : hazard.h + 55);
+      && Math.abs(position.y - (p.y - (p.crouching ? 22 : 34))) < (hazard.type === 'gear' ? radius + 56 : hazard.h + 55);
   }) : undefined;
   if (danger && state.dangerKey !== danger.id && state.time >= state.dangerAfter
     && state.acting.gesture !== 'delighted' && state.acting.gesture !== 'curious') {

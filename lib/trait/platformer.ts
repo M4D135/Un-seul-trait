@@ -1,5 +1,5 @@
 import { preparePlayerStroke, STROKE_ANCHOR_RADIUS } from './platform-drawing';
-import { activateNearestMechanism, advanceMechanisms, createMechanismStates, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
+import { activateNearestMechanism, advanceMechanisms, createMechanismStates, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
 import type { HandInteraction, MechanismState, PlatformMechanism } from './platform-mechanisms';
 export { activateNearestMechanism, beginMechanismInteraction, endMechanismInteraction, getAvailableMechanism, getMechanismHandlePosition, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
 export type { HandInteraction, MechanismResult, MechanismState, MechanismView, PlatformMechanism } from './platform-mechanisms';
@@ -44,15 +44,15 @@ export type PlatformLevel = {
 export type PlatformInput = {
   left: boolean;
   right: boolean;
-  /** One-frame pulse. Holding a key should not repeatedly send this flag. */
-  jump: boolean;
+  /** Held input: stay low, or walk slowly under an overhead obstacle. */
+  crouch?: boolean;
   /** One-frame pulse, shared by E and the on-screen hand button. */
   draw: boolean;
   /** Optional one-frame pulse: move the nearest gold handle to its other rail end. */
   interact?: boolean;
 };
 
-export type GameEvent = 'jump' | 'land' | 'draw-start' | 'draw-complete' | 'star' | 'death' | 'respawn' | 'checkpoint' | 'win' | 'mechanism-start' | 'mechanism-settle';
+export type GameEvent = 'land' | 'draw-start' | 'draw-complete' | 'star' | 'death' | 'respawn' | 'checkpoint' | 'win' | 'mechanism-start' | 'mechanism-settle';
 
 export type BloodParticle = {
   x: number; y: number; vx: number; vy: number;
@@ -64,6 +64,7 @@ export type PlatformPlayer = {
   x: number; y: number; vx: number; vy: number;
   facing: -1 | 1;
   grounded: boolean;
+  crouching: boolean;
   /** Actual accumulated horizontal distance, used to animate walking. */
   travel: number;
 };
@@ -86,8 +87,6 @@ export type GameWorld = {
   particles: BloodParticle[];
   deathTimer: number;
   invulnerable: number;
-  coyote: number;
-  jumpBuffer: number;
   completedAt: number | null;
   lastDeathCause: 'gear' | 'spikes' | 'fall' | null;
 };
@@ -95,15 +94,18 @@ export type GameWorld = {
 export const PLATFORM_PHYSICS = {
   speed: 185,
   gravity: 820,
-  jumpSpeed: 460,
+  crouchSpeed: 95,
   maxFallSpeed: 730,
   bodyHeight: 80,
+  crouchHeight: 44,
   bodyRadius: 10,
   stepHeight: 34,
-  coyoteTime: 0.1,
-  jumpBufferTime: 0.12,
   respawnDelay: 0.9,
 } as const;
+
+export function getPlayerHeight(player: Pick<PlatformPlayer, 'crouching'>): number {
+  return player.crouching ? PLATFORM_PHYSICS.crouchHeight : PLATFORM_PHYSICS.bodyHeight;
+}
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const approach = (n: number, target: number, amount: number) => n < target ? Math.min(target, n + amount) : Math.max(target, n - amount);
@@ -111,11 +113,11 @@ const approach = (n: number, target: number, amount: number) => n < target ? Mat
 export function createWorld(level: PlatformLevel): GameWorld {
   return {
     levelId: level.id,
-    player: { ...level.start, vx: 0, vy: 0, facing: 1, grounded: true, travel: 0 },
+    player: { ...level.start, vx: 0, vy: 0, facing: 1, grounded: true, crouching: false, travel: 0 },
     time: 0, phase: 'playing', drawn: [], constructions: {}, activeDrawing: null, collected: [],
     mechanisms: createMechanismStates(level), handInteraction: null,
     checkpointIndex: -1, deaths: 0, particles: [], deathTimer: 0, invulnerable: 0,
-    coyote: PLATFORM_PHYSICS.coyoteTime, jumpBuffer: 0, completedAt: null, lastDeathCause: null,
+    completedAt: null, lastDeathCause: null,
   };
 }
 
@@ -208,7 +210,6 @@ export function finishPlayerStroke(world: GameWorld, level: PlatformLevel): Play
   world.phase = 'playing';
   world.activeDrawing = null;
   world.invulnerable = Math.max(world.invulnerable, 0.4);
-  world.jumpBuffer = 0;
   return { ok: true, message: result.message };
 }
 
@@ -223,20 +224,17 @@ export function cancelPlayerDrawing(world: GameWorld): void {
   if (world.phase !== 'drawing') return;
   world.activeDrawing = null;
   world.phase = 'playing';
-  world.jumpBuffer = 0;
 }
 
 /** Mutates the world, preserving collected stars, completed drawings and the death counter. */
 export function restartAtCheckpoint(world: GameWorld, level: PlatformLevel): GameWorld {
   releaseMechanisms(world);
   const spawn = level.checkpoints[world.checkpointIndex] ?? level.start;
-  world.player = { ...spawn, vx: 0, vy: 0, facing: 1, grounded: true, travel: 0 };
+  world.player = { ...spawn, vx: 0, vy: 0, facing: 1, grounded: true, crouching: false, travel: 0 };
   world.phase = 'playing';
   world.activeDrawing = null;
   world.deathTimer = 0;
   world.invulnerable = 1.1;
-  world.coyote = PLATFORM_PHYSICS.coyoteTime;
-  world.jumpBuffer = 0;
   world.completedAt = null;
   return world;
 }
@@ -262,7 +260,7 @@ function standingFloor(surfaces: PlatformSurface[], x: number, nearY: number): n
 }
 
 function capsuleHitsCircle(player: PlatformPlayer, centre: PlatformPoint, radius: number): boolean {
-  const bodyTop = player.y - PLATFORM_PHYSICS.bodyHeight + PLATFORM_PHYSICS.bodyRadius;
+  const bodyTop = player.y - getPlayerHeight(player) + PLATFORM_PHYSICS.bodyRadius;
   const bodyBottom = player.y - PLATFORM_PHYSICS.bodyRadius;
   const nearestY = clamp(centre.y, bodyTop, bodyBottom);
   return Math.hypot(centre.x - player.x, centre.y - nearestY) < radius + PLATFORM_PHYSICS.bodyRadius;
@@ -272,12 +270,29 @@ function capsuleHitsSpikes(player: PlatformPlayer, hazard: Extract<PlatformHazar
   // Slightly inset from drawn tips, making near misses readable and forgiving.
   const left = hazard.x + 3, right = hazard.x + hazard.w - 3;
   const top = hazard.y + 5, bottom = hazard.y + hazard.h;
-  const bodyTop = player.y - PLATFORM_PHYSICS.bodyHeight + PLATFORM_PHYSICS.bodyRadius;
+  const bodyTop = player.y - getPlayerHeight(player) + PLATFORM_PHYSICS.bodyRadius;
   const bodyBottom = player.y - PLATFORM_PHYSICS.bodyRadius;
   const px = clamp(player.x, left, right);
   const py = bodyBottom < top ? top : bodyTop > bottom ? bottom : clamp((bodyTop + bodyBottom) / 2, top, bottom);
   const nearestY = clamp(py, bodyTop, bodyBottom);
   return Math.hypot(px - player.x, py - nearestY) < PLATFORM_PHYSICS.bodyRadius;
+}
+
+/** Releasing Down under a beam or wheel keeps the crouch until the head has room. */
+function canStandUpright(world: GameWorld, level: PlatformLevel): boolean {
+  const standing: PlatformPlayer = { ...world.player, crouching: false };
+  for (const hazard of level.hazards) {
+    if (hazard.type === 'gear'
+      ? capsuleHitsCircle(standing, getWorldHazardPosition(world, level, hazard), hazard.r * 0.84)
+      : capsuleHitsSpikes(standing, hazard)) return false;
+  }
+  for (const mechanism of level.mechanisms ?? []) {
+    if (mechanism.type !== 'gate') continue;
+    const gate = getMechanismPosition(world, mechanism);
+    if (Math.abs(standing.x - gate.x) < mechanism.width / 2 + PLATFORM_PHYSICS.bodyRadius
+      && standing.y > gate.y - mechanism.height && standing.y - PLATFORM_PHYSICS.bodyHeight < gate.y) return false;
+  }
+  return true;
 }
 
 function splatter(world: GameWorld, cause: 'gear' | 'spikes' | 'fall') {
@@ -311,7 +326,6 @@ function kill(world: GameWorld, cause: 'gear' | 'spikes' | 'fall', events: GameE
   world.deathTimer = PLATFORM_PHYSICS.respawnDelay;
   world.player.vx = 0;
   world.player.vy = 0;
-  world.jumpBuffer = 0;
   events.push('death');
 }
 
@@ -342,21 +356,11 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
   const p = world.player;
   const direction = Number(input.right) - Number(input.left);
   const acceleration = p.grounded ? (direction ? 1450 : 1900) : (direction ? 1100 : 450);
-  p.vx = approach(p.vx, direction * PLATFORM_PHYSICS.speed, acceleration * dt);
+  const speed = p.crouching ? PLATFORM_PHYSICS.crouchSpeed : PLATFORM_PHYSICS.speed;
+  p.vx = approach(p.vx, direction * speed, acceleration * dt);
   // Keep looking in the actual travel direction during braking, then turn.
   if (Math.abs(p.vx) > 2) p.facing = p.vx > 0 ? 1 : -1;
   else if (direction) p.facing = direction > 0 ? 1 : -1;
-  if (p.grounded) world.coyote = PLATFORM_PHYSICS.coyoteTime;
-  else world.coyote = Math.max(0, world.coyote - dt);
-
-  if (world.jumpBuffer > 0 && world.coyote > 0) {
-    p.vy = -PLATFORM_PHYSICS.jumpSpeed;
-    p.grounded = false;
-    world.coyote = 0;
-    world.jumpBuffer = 0;
-    events.push('jump');
-  }
-
   const oldX = p.x, oldY = p.y;
   const wasGrounded = p.grounded;
   p.x = clamp(p.x + p.vx * dt, 28, level.width - 28);
@@ -364,7 +368,10 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
   if (wasGrounded) {
     const floor = standingFloor(surfaces, p.x, oldY);
     if (floor !== null) { p.y = floor; p.vy = 0; }
-    else p.grounded = false;
+    else if (standingFloor(surfaces, oldX, oldY) !== null) {
+      // He waits at an unfinished edge for the human hand; there is no auto-hop.
+      p.x = oldX; p.y = oldY; p.vx = 0; p.vy = 0;
+    } else p.grounded = false;
   }
 
   if (!p.grounded) {
@@ -383,7 +390,6 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
         p.y = landing;
         p.vy = 0;
         p.grounded = true;
-        world.coyote = PLATFORM_PHYSICS.coyoteTime;
         if (!wasGrounded) events.push('land');
       }
     }
@@ -391,7 +397,6 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
   resolveGateCollision(world, level, { x: oldX, y: oldY });
   // The walk cycle follows ground travel, and holds its last pose while airborne.
   if (p.grounded) p.travel += Math.abs(p.x - oldX);
-  world.jumpBuffer = Math.max(0, world.jumpBuffer - dt);
 
   if (p.y > 675 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) { kill(world, 'fall', events); return; }
   if (world.invulnerable <= 0) {
@@ -405,7 +410,7 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
 
   level.stars.forEach((star, index) => {
     if (world.collected.includes(index)) return;
-    const closestY = clamp(star.y, p.y - PLATFORM_PHYSICS.bodyHeight + 12, p.y - 12);
+    const closestY = clamp(star.y, p.y - getPlayerHeight(p) + 12, p.y - 12);
     if (Math.hypot(star.x - p.x, star.y - closestY) < 27) {
       world.collected.push(index);
       events.push('star');
@@ -430,7 +435,7 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
 
 /**
  * Advances one frame, mutating world and returning discrete events for UI/audio.
- * The caller owns pause: do not call while paused. jump/draw are input pulses.
+ * The caller owns pause: do not call while paused. draw/interact are input pulses.
  * Internally split at 120Hz so thin spikes and moving gears cannot be skipped.
  */
 export function updateWorld(world: GameWorld, level: PlatformLevel, input: PlatformInput, elapsed: number): GameEvent[] {
@@ -447,7 +452,6 @@ export function updateWorld(world: GameWorld, level: PlatformLevel, input: Platf
       world.activeDrawing = { id: drawing.id, progress: 0, path: [], started: false };
       world.player.vx = 0;
       world.player.vy = 0;
-      world.jumpBuffer = 0;
       events.push('draw-start');
       return events;
     }
@@ -462,10 +466,10 @@ export function updateWorld(world: GameWorld, level: PlatformLevel, input: Platf
     if (world.deathTimer <= 0) { restartAtCheckpoint(world, level); events.push('respawn'); }
     return events;
   }
-  if (input.jump) world.jumpBuffer = PLATFORM_PHYSICS.jumpBufferTime;
   const count = Math.ceil(dt / (1 / 120));
   const step = dt / count;
   for (let i = 0; i < count; i++) {
+    world.player.crouching = !!input.crouch || (world.player.crouching && !canStandUpright(world, level));
     if (advanceMechanisms(world, level, step)) events.push('mechanism-settle');
     updatePlayer(world, level, getWorldSurfaces(world, level), input, step, events);
     if (world.phase !== 'playing') break;

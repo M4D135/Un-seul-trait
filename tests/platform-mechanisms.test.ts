@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import * as E from '../lib/trait/platformer';
 import type { DrawingObstacle, GameWorld, PlatformHazard, PlatformInput, PlatformLevel, PlatformMechanism, PlatformPoint, PlatformSurface } from '../lib/trait/platformer';
 import { PLATFORM_LEVELS as levels } from '../lib/trait/platform-levels';
+import { restoreProgress, saveProgress } from '../lib/trait/progress';
 
-const idle: PlatformInput = { left: false, right: false, jump: false, draw: false };
+const idle: PlatformInput = { left: false, right: false, crouch: false, draw: false };
 const dt = 1 / 120;
 const tick = (w: GameWorld, l: PlatformLevel, input: PlatformInput = idle, seconds = dt) => E.updateWorld(w, l, input, seconds);
 function run(w: GameWorld, l: PlatformLevel, seconds: number, input: PlatformInput = idle) { for (let t = 0; t < seconds; t += dt) tick(w, l, input); }
@@ -59,11 +60,11 @@ test('F selects the nearest mechanism, toggles its endpoint, and recalls a parke
   run(w, l, 3); assert.equal(w.mechanisms.ferry.progress, 0);
 });
 
-test('closed gates block walking and jumping; lifting at the stop unlocks them', () => {
+test('closed gates block upright and crouched walking; lifting unlocks them', () => {
   const l = fixture({ mechanisms: [gate] }), w = E.createWorld(l);
   run(w, l, 2, { ...idle, right: true });
   assert.equal(w.player.x, gate.from.x - gate.width / 2 - E.PLATFORM_PHYSICS.bodyRadius);
-  tick(w, l, { ...idle, right: true, jump: true });
+  tick(w, l, { ...idle, right: true, crouch: true });
   run(w, l, 1.4, { ...idle, right: true });
   assert(w.player.x < gate.from.x);
   assert(E.activateNearestMechanism(w, l).ok);
@@ -77,6 +78,53 @@ test('closed gates block walking and jumping; lifting at the stop unlocks them',
   run(w, l, 2);
   assert.equal(w.phase, 'playing');
   assert(E.getMechanismPosition(w, gate).y <= w.player.y - 80, 'a lowering gate stops above the head');
+});
+
+test('crouching fits under a low gate and cannot stand up until the head is clear', () => {
+  const lowGate = { ...gate, width: 120, from: { x: 390, y: 376 } };
+  const l = fixture({ mechanisms: [lowGate] }), w = E.createWorld(l);
+  run(w, l, 1.5, { ...idle, right: true });
+  assert.equal(w.player.x, 320, 'the upright body is stopped by the low gate');
+  run(w, l, 1, { ...idle, right: true, crouch: true });
+  assert(w.player.x > 390 && w.player.crouching);
+  run(w, l, 0.1);
+  assert(w.player.crouching, 'releasing Down under the gate must not unfold the body');
+  run(w, l, 1, { ...idle, right: true });
+  assert(w.player.x > 480); assert.equal(w.player.crouching, false); assert.equal(w.deaths, 0);
+
+  const closing = fixture({ mechanisms: [gate] }), cw = E.createWorld(closing);
+  cw.player.x = gate.from.x; cw.player.crouching = true;
+  cw.mechanisms.gate = { progress: 1, target: 1 };
+  assert(E.activateNearestMechanism(cw, closing).ok);
+  run(cw, closing, 2, { ...idle, crouch: true });
+  const bottom = E.getMechanismPosition(cw, gate).y;
+  assert(bottom > 350 && bottom <= 386, 'closing clearance uses the 44-unit crouched body');
+  run(cw, closing, 0.1);
+  assert(cw.player.crouching); assert.equal(cw.deaths, 0);
+});
+
+test('an overhead wheel is dangerous upright and safe during a held or obstructed crouch', () => {
+  const l = fixture({ hazards: [{ id: 'low-wheel', type: 'gear', x: 390, y: 342, r: 28 }] });
+  const standing = E.createWorld(l);
+  run(standing, l, 1.5, { ...idle, right: true });
+  assert.equal(standing.deaths, 1);
+  const crouched = E.createWorld(l);
+  run(crouched, l, 2.4, { ...idle, right: true, crouch: true });
+  assert(Math.abs(crouched.player.x - 390) < 25); assert.equal(crouched.deaths, 0);
+  run(crouched, l, 0.1);
+  assert(crouched.player.crouching);
+  run(crouched, l, 1.2, { ...idle, right: true });
+  assert(crouched.player.x > 460); assert.equal(crouched.player.crouching, false); assert.equal(crouched.deaths, 0);
+});
+
+test('walking toward an unfinished gap stops at the edge without a launch or a forced fall', () => {
+  const l = fixture({ surfaces: [floor(0, 300), floor(600, 2000)] }), w = E.createWorld(l);
+  run(w, l, 3, { ...idle, right: true });
+  assert(w.player.x > 298 && w.player.x <= 300);
+  assert.equal(w.player.y, 430); assert.equal(w.player.vy, 0); assert.equal(w.player.vx, 0);
+  assert(w.player.grounded); assert.equal(w.deaths, 0);
+  run(w, l, 0.3, { ...idle, left: true });
+  assert(w.player.x < 270, 'the player can turn back from the edge');
 });
 
 test('movable and free gear collisions use exactly their rendered positions', () => {
@@ -93,26 +141,22 @@ test('movable and free gear collisions use exactly their rendered positions', ()
   assert.deepEqual(E.getWorldHazardPosition(fw, free, wheel), E.getHazardPosition(wheel, fw.time));
 });
 
-test('manual free drawing, jumps and actual-velocity facing survive mechanism integration', () => {
+test('manual free drawing, crouch walking and actual-velocity facing remain independent', () => {
   const l = { ...levels[0], mechanisms: [], hazards: [], stars: [], surfaces: [floor(-100, 5000)] };
   const w = E.createWorld(l), d = l.drawings[0], a = d.path[0], b = d.path.at(-1)!;
   w.player.x = d.triggerX;
   const path = [a, { x: a.x + 90, y: 375 }, { x: b.x - 90, y: 375 }, b];
   draw(w, l, d, path);
   assert.deepEqual(w.constructions[d.id], path);
-  for (const prepare of [() => {}, () => run(w, l, 0.3, { ...idle, right: true }), () => tick(w, l, { ...idle, left: true })]) {
-    prepare(); const y = w.player.y;
-    assert(tick(w, l, { ...idle, jump: true }).includes('jump'));
-    assert.equal(w.player.grounded, false);
-    let top = w.player.y;
-    for (let i = 0; i < 150; i++) { tick(w, l); top = Math.min(top, w.player.y); }
-    assert(y - top > 100); assert(w.player.grounded);
-  }
   run(w, l, 0.3, { ...idle, right: true });
   tick(w, l, { ...idle, left: true });
   assert(w.player.vx > 0); assert.equal(w.player.facing, 1);
   run(w, l, 0.3, { ...idle, left: true });
   assert(w.player.vx < 0); assert.equal(w.player.facing, -1);
+  run(w, l, 0.5, { ...idle, right: true, crouch: true });
+  assert(w.player.crouching); assert.equal(w.player.vx, E.PLATFORM_PHYSICS.crouchSpeed);
+  assert.equal(w.player.y,430); assert.equal(w.player.vy,0); assert(w.player.grounded);
+  run(w,l,.2); assert.equal(w.player.crouching,false); assert.equal(E.getPlayerHeight(w.player),80);
 });
 
 test('drawing pauses mechanisms and death releases the hand while retaining progress, stars and constructions', () => {
@@ -154,10 +198,30 @@ test('all eighteen bridges still validate through the public stroke API and supp
   assert.equal(count, 18);
 });
 
-test('all six complete geometries remain traversable using drawing, ferries, gates and jumps', () => {
+test('an old saved flat bridge can be redrawn from either bank after the new spike layout', () => {
+  const l = levels[0], d = l.drawings[0], saved = saveProgress(E.createWorld(l), l);
+  saved.constructions[d.id] = [{ ...d.path[0] }, { ...d.path[d.path.length - 1] }];
+  saved.mechanisms['premiere-porte'] = 1;
+  const w = restoreProgress(JSON.parse(JSON.stringify(saved)), l)!;
+  assert.deepEqual(w.drawn, [d.id]);
+  for (let i = 0; i < 1200 && w.phase !== 'dead'; i++) tick(w, l, { ...idle, right: true });
+  assert.equal(w.phase, 'dead', 'the old flat line reaches the new spikes');
+  assert.equal(w.deaths, 1); run(w, l, 1.1);
+  for (let i = 0; i < 1000 && E.getAvailableDrawing(w, l)?.id !== d.id; i++) tick(w, l, { ...idle, right: true });
+  assert.equal(E.getAvailableDrawing(w, l)?.id, d.id, 'the existing passage remains editable before crossing');
+  draw(w, l, d);
+  for (let i = 0; i < 1400 && w.player.x < l.checkpoints[0].x + 5; i++) tick(w, l, { ...idle, right: true });
+  assert(w.player.x >= l.checkpoints[0].x + 5); assert.equal(w.deaths, 1);
+  const fromRight = restoreProgress({ ...saved, checkpointIndex: 0 }, l)!;
+  assert.equal(E.getAvailableDrawing(fromRight, l)?.id, d.id, 'the far-bank checkpoint also offers redrawing');
+  draw(fromRight, l, d, [...d.path].reverse());
+  assert.deepEqual(fromRight.constructions[d.id], d.path);
+});
+
+test('all six routes finish on foot with active hazards, all stars and every manual passage', () => {
   for (const source of levels) {
-    // Separate route/carry geometry from hazard timing, which is checked above.
-    const l = { ...source, hazards: [], stars: [] }, w = E.createWorld(l);
+    const l = source, w = E.createWorld(l);
+    let crouchFrames = 0;
     let waiting: string | null = null;
     for (let i = 0; i < 7200 && w.phase !== 'won'; i++) {
       assert.equal(w.phase, 'playing', `level ${l.id}, x=${w.player.x}, y=${w.player.y}`);
@@ -174,12 +238,19 @@ test('all six complete geometries remain traversable using drawing, ferries, gat
           waiting = m.id;
         }
       }
-      const ahead = w.player.x + 28;
-      const hasFloor = E.getWorldSurfaces(w, l).some(s => Math.abs(s.a.x - s.b.x) > 0.01 && ahead >= Math.min(s.a.x, s.b.x) && ahead <= Math.max(s.a.x, s.b.x));
-      tick(w, l, { ...idle, right: !waiting, jump: !waiting && w.player.grounded && !hasFloor }, 1 / 60);
+      const crouch = l.hazards.some(h => {
+        if(h.type!=='gear')return false;
+        const position=E.getWorldHazardPosition(w,l,h);
+        return Math.abs(position.x-w.player.x)<h.r+80 && position.y<w.player.y-12 && position.y>w.player.y-130;
+      });
+      if(crouch)crouchFrames++;
+      tick(w, l, { ...idle, right: !waiting, crouch }, 1 / 60);
+      assert(w.player.vy>=0,`level ${l.id} acquired an upward velocity`);
     }
     assert.equal(w.phase, 'won', `level ${l.id} stopped at ${w.player.x},${w.player.y}`);
     assert.equal(w.drawn.length, 3); assert.equal(w.deaths, 0);
+    assert.equal(w.collected.length,3,`level ${l.id} missing a walking star`);
+    assert(crouchFrames>0,`level ${l.id} never exercised crouching`);
     for (const m of (l.mechanisms ?? []).filter(m => m.type === 'platform')) assert.equal(w.mechanisms[m.id].progress, 1);
   }
 });

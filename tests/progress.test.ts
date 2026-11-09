@@ -51,7 +51,7 @@ test('long valid freehand passages keep every committed point after save and rel
   const level=PLATFORM_LEVELS[0],world=createWorld(level),drawing=level.drawings[0];
   const a=drawing.path[0],b=drawing.path.at(-1)!;
   world.player.x=drawing.triggerX;
-  assert(updateWorld(world,level,{left:false,right:false,jump:false,draw:true},1/60).includes('draw-start'));
+  assert(updateWorld(world,level,{left:false,right:false,crouch:false,draw:true},1/60).includes('draw-start'));
   assert(beginPlayerStroke(world,level,a).ok);
   // A small, continuous hand tremor is legal and survives the 1.25-unit simplifier.
   for(let i=1;i<2200;i++)appendPlayerStroke(world,level,{x:a.x+(b.x-a.x)*i/2200,y:a.y+(i%2?2:-2)});

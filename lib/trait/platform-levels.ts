@@ -8,9 +8,9 @@ const spikes = (id: string, x: number, y: number, w: number, h = 26): PlatformHa
 const drawing = (id: string, title: string, prompt: string, triggerX: number, points: [number, number][], duration = 2.2): DrawingObstacle => ({ id, title, prompt, triggerX, path: route(points), duration });
 
 /**
- * Expand the running sections for a scrolling level. Small, unaided jump gaps
- * stay at most 145 units; only the larger gaps require the drawing hand.
- * Heights, tooth sizes and stair rises keep the same physical jump difficulty.
+ * Expand the walking sections for a scrolling level. Join the old small gaps;
+ * every remaining gap is repaired by a freehand drawing or crossed on a ferry.
+ * Stair rises stay small enough to walk up with both feet following the line.
  */
 function wide(level: PlatformLevel, factor = 1.65): PlatformLevel {
   const point = (q: PlatformPoint): PlatformPoint => ({ x: Math.round(q.x * factor), y: q.y });
@@ -18,8 +18,7 @@ function wide(level: PlatformLevel, factor = 1.65): PlatformLevel {
   for (let i = 1; i < surfaces.length; i++) {
     const originalGap = level.surfaces[i].a.x - level.surfaces[i - 1].b.x;
     if (originalGap > 0 && originalGap <= 160) {
-      const expandedGap = surfaces[i].a.x - surfaces[i - 1].b.x;
-      if (expandedGap > 145) surfaces[i - 1].b.x = surfaces[i].a.x - 145;
+      surfaces[i - 1].b.x = surfaces[i].a.x;
     }
   }
   const width = Math.round(level.width * factor);
@@ -36,7 +35,7 @@ function wide(level: PlatformLevel, factor = 1.65): PlatformLevel {
 /** Six authored courses: three hand constructions, moving hazards and safe flags. */
 const DRAWING_COURSES: PlatformLevel[] = [
   wide({
-    id: 1, title: 'Le premier passage', subtitle: 'Avance, saute les pièges et appelle la main devant le vide.', palette: 'blue', width: 2600,
+    id: 1, title: 'Le premier passage', subtitle: 'Avance, baisse-toi et appelle la main devant le vide.', palette: 'blue', width: 2600,
     start: p(160, 430), goal: p(2460, 430),
     surfaces: [floor(-120, 460, 430), floor(760, 1090, 430), floor(1220, 1560, 430), floor(1850, 2100, 350), floor(2320, 2740, 430)],
     drawings: [
@@ -48,7 +47,7 @@ const DRAWING_COURSES: PlatformLevel[] = [
     stars: [p(850, 375), p(1375, 302), p(2070, 295)], checkpoints: [p(815, 430), p(1895, 350), p(2370, 430)],
   }),
   wide({
-    id: 2, title: 'Les dents de la ligne', subtitle: 'Les roues bougent. Observe leur passage avant de sauter.', palette: 'terracotta', width: 2800,
+    id: 2, title: 'Les dents de la ligne', subtitle: 'Les roues bougent. Passe dessous ou soulève leur poignée.', palette: 'terracotta', width: 2800,
     start: p(160, 430), goal: p(2660, 430),
     surfaces: [floor(-120, 500, 430), floor(780, 1130, 430), floor(1270, 1540, 430), floor(1800, 2090, 360), floor(2390, 2940, 430)],
     drawings: [
@@ -133,6 +132,7 @@ function cooperativeCourse(source: PlatformLevel): PlatformLevel {
     ...source,
     surfaces: source.surfaces.map(s => ({ a: { ...s.a }, b: { ...s.b } })),
     hazards: source.hazards.map(h => ({ ...h })),
+    drawings: source.drawings.map(d => ({ ...d, path: d.path.map(q => ({ ...q })) })),
     stars: source.stars.map(q => ({ ...q })),
     checkpoints: source.checkpoints.map(q => ({ ...q })),
     mechanisms: [],
@@ -188,8 +188,51 @@ function cooperativeCourse(source: PlatformLevel): PlatformLevel {
       addFlag(5320, 430);
       break;
   }
+  makeWalkingRoute(level);
   level.checkpoints.sort((a, b) => a.x - b.x);
   return level;
+}
+
+/** Highest authored walking surface at x, including each reference drawing. */
+function routeHeight(level: PlatformLevel, x: number): number {
+  const candidates = level.surfaces.slice();
+  for (const drawing of level.drawings) for (let i = 1; i < drawing.path.length; i++) {
+    candidates.push({ a: drawing.path[i - 1], b: drawing.path[i] });
+  }
+  const heights = candidates.flatMap(({ a, b }) => {
+    if (Math.abs(b.x - a.x) < 0.01 || x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x)) return [];
+    return [a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)];
+  });
+  return heights.length ? Math.min(...heights) : 430;
+}
+
+/** Keep the same anchors/save identifiers while replacing every mandatory leap. */
+function makeWalkingRoute(level: PlatformLevel): void {
+  const points = level.hazards.filter((hazard): hazard is Extract<PlatformHazard, { type: 'spikes' }> => hazard.type === 'spikes');
+  points.forEach((hazard, index) => {
+    const drawing = level.drawings[index === 0 ? 0 : 2];
+    const a = drawing.path[0], b = drawing.path[drawing.path.length - 1];
+    const high = Math.min(a.y, b.y) - (index === 0 ? 60 : 50), span = b.x - a.x;
+    drawing.path = [{ ...a }, p(a.x + span * 0.25, high), p(a.x + span * 0.75, high), { ...b }];
+    drawing.prompt = 'Dessine une arche au-dessus des pointes, puis marche sur ton trait.';
+    hazard.w = 84;
+    hazard.x = (a.x + b.x) * 0.5 - hazard.w / 2;
+    hazard.y = high + 28;
+    hazard.h = 26;
+  });
+  const handledWheels = new Set((level.mechanisms ?? []).flatMap(m => m.type === 'gear' ? [m.hazardId] : []));
+  for (const hazard of level.hazards) {
+    if (hazard.type !== 'gear' || handledWheels.has(hazard.id) || hazard.y >= 440) continue;
+    // The entire oscillation leaves room for a crouched body, but remains dangerous upright.
+    const reach = hazard.axis === 'x' ? (hazard.range ?? 0) + hazard.r : 0;
+    const floorY = Math.min(routeHeight(level, hazard.x), routeHeight(level, hazard.x - reach), routeHeight(level, hazard.x + reach));
+    hazard.y = floorY - (hazard.axis === 'y' ? 96 : 88);
+    if (hazard.axis === 'y') hazard.range = 8;
+  }
+  level.stars = level.stars.map(star => ({ x: star.x, y: routeHeight(level, star.x) - 30 }));
+  if (level.id === 1) level.subtitle = 'Soulève la porte, dessine une arche et baisse-toi sous les roues.';
+  if (level.id === 2) level.subtitle = 'Trace au-dessus des pointes et glisse sous les roues en te baissant.';
+  if (level.id === 6) level.subtitle = 'Un dernier chemin à pied : arches, roues, passeur et porte à ouvrir ensemble.';
 }
 
 export const PLATFORM_LEVELS: PlatformLevel[] = DRAWING_COURSES.map(cooperativeCourse);

@@ -1,4 +1,5 @@
 import type { GameWorld, PlatformHazard, PlatformLevel, PlatformPoint, PlatformSurface } from './platformer';
+import { getPlayerHeight } from './platformer';
 
 /** Rail endpoints are a platform's top centre, a gate's bottom centre, or a gear's centre. */
 type MechanismBase = {
@@ -106,7 +107,7 @@ export function moveMechanismInteraction(world: GameWorld, level: PlatformLevel,
   const mechanism = (level.mechanisms ?? []).find(m => m.id === world.handInteraction?.id);
   if (!mechanism) return;
   const position = getMechanismPosition(world, mechanism), handle = getMechanismHandlePosition(world, mechanism);
-  // Account for the visible handle's offset: grabbing it never makes the object jump.
+  // Account for the visible handle's offset: grabbing it never shifts the object suddenly.
   const anchorPoint = { x: point.x - (handle.x - position.x), y: point.y - (handle.y - position.y) };
   world.mechanisms[mechanism.id].target = railFraction(mechanism, anchorPoint);
   world.handInteraction.point = { ...point };
@@ -134,11 +135,11 @@ export function releaseMechanisms(world: GameWorld): void {
 
 function gateOverlapsPlayer(world: GameWorld, mechanism: Extract<PlatformMechanism, { type: 'gate' }>, p: PlatformPoint): boolean {
   const hero = world.player;
-  return Math.abs(hero.x - p.x) < mechanism.width / 2 + 11 && hero.y > p.y - mechanism.height + 1 && hero.y - 80 < p.y + 1;
+  return Math.abs(hero.x - p.x) < mechanism.width / 2 + 11 && hero.y > p.y - mechanism.height + 1 && hero.y - getPlayerHeight(hero) < p.y + 1;
 }
 
 function gearDistanceFromPlayer(world: GameWorld, p: PlatformPoint): number {
-  const nearestY = Math.max(world.player.y - 70, Math.min(world.player.y - 10, p.y));
+  const nearestY = Math.max(world.player.y - getPlayerHeight(world.player) + 10, Math.min(world.player.y - 10, p.y));
   return Math.hypot(world.player.x - p.x, nearestY - p.y);
 }
 
@@ -201,10 +202,10 @@ export function resolveGateCollision(world: GameWorld, level: PlatformLevel, pre
     const gate = getMechanismPosition(world, mechanism);
     const left = gate.x - mechanism.width / 2 - 10, right = gate.x + mechanism.width / 2 + 10;
     const top = gate.y - mechanism.height;
-    if (p.x <= left || p.x >= right || p.y <= top || p.y - 80 >= gate.y) continue;
+    if (p.x <= left || p.x >= right || p.y <= top || p.y - getPlayerHeight(p) >= gate.y) continue;
     if (previous.x <= left || (previous.x < gate.x && previous.y > top)) { p.x = left; p.vx = 0; }
     else if (previous.x >= right || previous.y > top) { p.x = right; p.vx = 0; }
     else if (p.vy >= 0 && previous.y <= top) { p.y = top; p.vy = 0; p.grounded = true; }
-    else { p.y = gate.y + 80; p.vy = Math.max(0, p.vy); }
+    else { p.y = gate.y + getPlayerHeight(p); p.vy = Math.max(0, p.vy); }
   }
 }

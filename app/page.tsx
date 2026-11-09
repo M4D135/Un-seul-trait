@@ -1,7 +1,7 @@
 "use client";
 
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,ArrowUp,Check,ChevronRight,Expand,Flag,Hand,HelpCircle,Keyboard,List,Pause,Pencil,Play,RotateCcw,Settings2,Skull,Star,Volume2,VolumeX,X} from "lucide-react";
+import {ArrowLeft,ArrowRight,ArrowDown,Check,ChevronRight,Expand,Flag,Hand,HelpCircle,Keyboard,List,Pause,Pencil,Play,RotateCcw,Settings2,Skull,Star,Volume2,VolumeX,X} from "lucide-react";
 import {PLATFORM_LEVELS} from "../lib/trait/platform-levels";
 import {appendPlayerStroke,beginPlayerStroke,cancelPlayerDrawing,createWorld,finishPlayerStroke,getAvailableDrawing,resetPlayerStroke,restartAtCheckpoint,updateWorld,beginMechanismInteraction,moveMechanismInteraction,endMechanismInteraction,getAvailableMechanism,getMechanismHandlePosition,type GameEvent,type PlatformInput,type PlatformPoint} from "../lib/trait/platformer";
 import {drawPlatformScene,PLATFORM_PALETTES} from "../lib/trait/platform-renderer";
@@ -16,9 +16,9 @@ type Panel="levels"|"help"|"settings"|"controls"|null;
 type Score={done:boolean;stars:number;deaths:number};
 const SAVE_KEY="un-seul-trait-platformer-v1";
 const emptyScores=()=>PLATFORM_LEVELS.map(()=>({done:false,stars:0,deaths:0}));
-const emptyInput=():PlatformInput=>({left:false,right:false,jump:false,draw:false,interact:false});
+const emptyInput=():PlatformInput=>({left:false,right:false,crouch:false,draw:false,interact:false});
 const initialWorld=createWorld(PLATFORM_LEVELS[0]);
-type View={phase:typeof initialWorld.phase;stars:number;deaths:number;checkpoint:number;drawn:number;available:string|null;percent:number;editing:string|null;hasStroke:boolean;redrawing:boolean;mechanism:string|null;handling:boolean;solved:number};
+type View={phase:typeof initialWorld.phase;stars:number;deaths:number;checkpoint:number;drawn:number;available:string|null;percent:number;editing:string|null;hasStroke:boolean;redrawing:boolean;mechanism:string|null;handling:boolean;solved:number;crouching:boolean};
 const snapshot=(world:typeof initialWorld,level:typeof PLATFORM_LEVELS[number]):View=>({
   phase:world.phase,stars:world.collected.length,deaths:world.deaths,checkpoint:world.checkpointIndex,
   drawn:world.drawn.length,available:getAvailableDrawing(world,level)?.id??null,
@@ -26,7 +26,7 @@ const snapshot=(world:typeof initialWorld,level:typeof PLATFORM_LEVELS[number]):
   editing:world.activeDrawing?.id??null,hasStroke:(world.activeDrawing?.path.length??0)>1,
   redrawing:world.drawn.includes(getAvailableDrawing(world,level)?.id??""),
   mechanism:getAvailableMechanism(world,level)?.id??null,handling:!!world.handInteraction,
-  solved:Object.values(world.mechanisms).filter(m=>m.progress>.95).length,
+  solved:Object.values(world.mechanisms).filter(m=>m.progress>.95).length,crouching:world.player.crouching,
 });
 
 function BrandMark(){
@@ -57,7 +57,7 @@ export default function Home(){
   const [storageOk,setStorageOk]=useState(true);
   const [reducedMotion,setReducedMotion]=useState(false);
   const [fullScreen,setFullScreen]=useState(false);
-  const [tip,setTip]=useState("Avance, saute et dessine toi-même les passages manquants.");
+  const [tip,setTip]=useState("Avance sur la ligne et dessine toi-même les passages manquants.");
   const [drawingError,setDrawingError]=useState(false);
   const [cinema,setCinema]=useState(false);
   const [blood,setBlood]=useState(true);
@@ -71,8 +71,8 @@ export default function Home(){
   const handRef=useRef<DrawingHand|null>(null);
   const cameraRef=useRef(0);
   const bindingsRef=useRef(bindings);bindingsRef.current=bindings;
-  const pressedKeysRef=useRef(new Set<string>());
-  const touchDirectionsRef=useRef({left:false,right:false});
+  const pressedKeysRef=useRef(new Map<string,string>());
+  const touchDirectionsRef=useRef({left:false,right:false,crouch:false});
   const strokePointerRef=useRef<number|null>(null);
   const mechanismPointerRef=useRef<number|null>(null);
   const pointerRef=useRef<PlatformPoint|null>(null);
@@ -101,7 +101,7 @@ export default function Home(){
     audioRef.current.unlock();
   },[]);
   const clearInput=useCallback(()=>{
-    controlsRef.current=emptyInput();pressedKeysRef.current.clear();touchDirectionsRef.current={left:false,right:false};
+    controlsRef.current=emptyInput();pressedKeysRef.current.clear();touchDirectionsRef.current={left:false,right:false,crouch:false};
   },[]);
   const persistAdventure=useCallback(()=>{
     if(!saveReadyRef.current)return;
@@ -114,10 +114,11 @@ export default function Home(){
     endMechanismInteraction(worldRef.current);mechanismPointerRef.current=null;
     audioRef.current?.endPencil();lastPencilRef.current=null;
   },[]);
-  const syncDirections=useCallback(()=>{
-    const actions=[...pressedKeysRef.current].map(key=>actionForKey(key,bindingsRef.current));
+  const syncHeldControls=useCallback(()=>{
+    const actions=[...pressedKeysRef.current.values()].map(key=>actionForKey(key,bindingsRef.current));
     controlsRef.current.left=touchDirectionsRef.current.left||actions.includes("left");
     controlsRef.current.right=touchDirectionsRef.current.right||actions.includes("right");
+    controlsRef.current.crouch=touchDirectionsRef.current.crouch||actions.includes("crouch");
   },[]);
   const startLevel=useCallback((index:number,fresh=false)=>{
     persistAdventure();
@@ -129,7 +130,7 @@ export default function Home(){
     latestRef.current.levelIndex=bounded;
     setLevelIndex(bounded);setView(snapshot(worldRef.current,PLATFORM_LEVELS[bounded]));
     setPaused(false);setPanel(null);
-    setDrawingError(false);setTip(resumed?"Aventure reprise au dernier drapeau. Tes dessins et tes mécanismes sont conservés.":"Avance, saute et dessine les passages. Déplace les poignées dorées pour lui donner un coup de main.");
+    setDrawingError(false);setTip(resumed?"Aventure reprise au dernier drapeau. Tes dessins et tes mécanismes sont conservés.":"Marche sur la ligne, baisse-toi et dessine les passages. Les poignées dorées permettent de déplacer le décor.");
     if(fresh)delete progressRef.current[String(PLATFORM_LEVELS[bounded].id)];
   },[clearInput,persistAdventure]);
   const retry=useCallback(()=>{
@@ -149,14 +150,20 @@ export default function Home(){
     audioRef.current=new GameAudio();handRef.current=new DrawingHand();
     const media=window.matchMedia("(prefers-reduced-motion: reduce)");
     const onMotion=()=>setReducedMotion(media.matches);onMotion();media.addEventListener("change",onMotion);
-    try{
-      const saved=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
-      const oldAudio=JSON.parse(localStorage.getItem("un-seul-trait-v1")||"null");
-      const prefs=saved||oldAudio;
-      progressRef.current=readAdventure(JSON.parse(localStorage.getItem(ADVENTURE_SAVE_KEY)||"null"),PLATFORM_LEVELS);
+    const readSaved=(key:string)=>{
+      let raw:string|null;
+      try{raw=localStorage.getItem(key);}catch{setStorageOk(false);return null;}
+      if(!raw)return null;
+      try{return JSON.parse(raw);}catch{return null;}
+    };
+    {
+      const rawSaved=readSaved(SAVE_KEY);
+      const saved=rawSaved&&typeof rawSaved==="object"&&!Array.isArray(rawSaved)?rawSaved:null;
+      const prefs=saved??readSaved("un-seul-trait-v1");
+      progressRef.current=readAdventure(readSaved(ADVENTURE_SAVE_KEY),PLATFORM_LEVELS);
       if(prefs){
         if(typeof prefs.muted==="boolean")setMuted(prefs.muted);
-        if(typeof prefs.volume==="number")setVolume(Math.max(0,Math.min(100,prefs.volume)));
+        if(typeof prefs.volume==="number"&&Number.isFinite(prefs.volume))setVolume(Math.max(0,Math.min(100,prefs.volume)));
         if(typeof prefs.cinema==="boolean")setCinema(prefs.cinema);
         if(typeof prefs.blood==="boolean")setBlood(prefs.blood);
         if(prefs.voiceMode==='grammelot'||prefs.voiceMode==='italian')setVoiceMode(prefs.voiceMode);
@@ -167,9 +174,10 @@ export default function Home(){
           done:saved.scores[i]?.done===true,stars:Math.max(0,Math.min(3,Number(saved.scores[i]?.stars)||0)),
           deaths:Math.max(0,Number(saved.scores[i]?.deaths)||0),
         })));
-        if(Number.isInteger(saved.levelIndex)&&saved.levelIndex>=0&&saved.levelIndex<PLATFORM_LEVELS.length)startLevel(saved.levelIndex);
       }
-    }catch{setStorageOk(false);}
+      // A damaged preference or legacy audio key must not discard a valid adventure.
+      startLevel(saved&&Number.isInteger(saved.levelIndex)&&saved.levelIndex>=0&&saved.levelIndex<PLATFORM_LEVELS.length?saved.levelIndex:0);
+    }
     saveReadyRef.current=true;setStorageReady(true);
     return()=>{audioRef.current?.dispose();media.removeEventListener("change",onMotion);};
   },[startLevel]);
@@ -202,7 +210,6 @@ export default function Home(){
     const observer=new ResizeObserver(resize);observer.observe(canvas);resize();setReady(true);
     const event=(kind:GameEvent)=>{
       const w=worldRef.current;
-      if(kind==="jump")audioRef.current?.play("draw");
       if(kind==="land")audioRef.current?.play("step");
       if(kind==="star")audioRef.current?.play("star");
       if(kind==="draw-start"){clearInput();setDrawingError(false);audioRef.current?.speak("waiting");setTip("Relie A et B avec ton trait. Relâche pour valider.");}
@@ -212,7 +219,7 @@ export default function Home(){
       if(kind==="checkpoint"){audioRef.current?.play("ready");setTip("Point de contrôle atteint.");}
       if(kind==="mechanism-start"){
         const mechanism=laterMechanism();
-        setTip(mechanism?.prompt??"Déplace la poignée dorée. Tu peux continuer à marcher et sauter.");
+        setTip(mechanism?.prompt??"Déplace la poignée dorée. Tu peux continuer à marcher et te baisser.");
         audioRef.current?.play("click");
       }
       if(kind==="mechanism-settle"){audioRef.current?.play("ready");setTip("En place. À vous deux de poursuivre le chemin.");}
@@ -233,11 +240,11 @@ export default function Home(){
       const events=new Set<GameEvent>(companionEventsRef.current);companionEventsRef.current=[];
       if(!frozen){
         // Catch up a slow display without slowing the character or skipping collisions.
-        // Physics substeps remain small; jump and drawing are consumed only once.
+        // Physics substeps stay small; drawing and interaction are consumed only once.
         const steps=Math.max(1,Math.ceil(dt/.05));
         for(let i=0;i<steps;i++){
           updateWorld(w,l,controlsRef.current,dt/steps).forEach(kind=>events.add(kind));
-          controlsRef.current.jump=false;controlsRef.current.draw=false;controlsRef.current.interact=false;
+          controlsRef.current.draw=false;controlsRef.current.interact=false;
         }
         events.forEach(event);
         const step=Math.floor(w.player.travel/29.6);
@@ -287,11 +294,14 @@ export default function Home(){
     const down=(e:KeyboardEvent)=>{
       if(e.isComposing||e.altKey||e.ctrlKey||e.metaKey||e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||latestRef.current.panel)return;
       const key=normalizeKey(e.key);if(!key)return;
-      const action=actionForKey(key,bindingsRef.current);if(!action)return;
+      const action=actionForKey(key,bindingsRef.current);
+      if(!action){
+        if(e.target===canvasRef.current&&(key===" "||key==="ArrowUp"))e.preventDefault();
+        return;
+      }
       const button=e.target instanceof HTMLElement?e.target.closest("button"):null;
-      // Space keeps its native meaning on menus and pause/win buttons. In the
-      // game dock it always jumps, even after a direction/hand button was used.
-      if((key===" "||key==="Enter")&&button&&(!button.closest(".platform-dock")||latestRef.current.paused||worldRef.current.phase==="won"))return;
+      // A focused button keeps native Space/Enter activation, including the dock.
+      if((key===" "||key==="Enter")&&button)return;
       if(action==="pause"){e.preventDefault();if(!e.repeat)togglePause();return;}
       if(latestRef.current.paused||worldRef.current.phase==="won")return;
       e.preventDefault();unlock();canvasRef.current?.focus({preventScroll:true});
@@ -300,26 +310,29 @@ export default function Home(){
         if(action==="draw"&&!e.repeat){cancelPlayerDrawing(worldRef.current);strokePointerRef.current=null;handRef.current?.clear();setDrawingError(false);setTip("Dessin annulé. Tu peux reprendre ta traversée.");}
         return;
       }
-      if(action==="left"||action==="right"){pressedKeysRef.current.add(key);syncDirections();}
-      if(action==="jump"&&!e.repeat)controlsRef.current.jump=true;
+      if(action==="left"||action==="right"||action==="crouch"){
+        const physicalKey=e.code||key;
+        if(!pressedKeysRef.current.has(physicalKey))pressedKeysRef.current.set(physicalKey,key);
+        syncHeldControls();
+      }
       if(action==="draw"&&!e.repeat)controlsRef.current.draw=true;
       if(action==="interact"&&!e.repeat)controlsRef.current.interact=true;
     };
     const up=(e:KeyboardEvent)=>{
-      const key=normalizeKey(e.key);if(key)pressedKeysRef.current.delete(key);syncDirections();
+      // Shift may change e.key between down/up; release the same physical key.
+      const key=e.code||normalizeKey(e.key);if(key)pressedKeysRef.current.delete(key);syncHeldControls();
     };
     const blur=()=>{clearInput();releaseHand();persistAdventure();};
     const hidden=()=>{if(document.hidden)blur();};
     window.addEventListener("keydown",down);window.addEventListener("keyup",up);
     window.addEventListener("blur",blur);document.addEventListener("visibilitychange",hidden);window.addEventListener("pagehide",persistAdventure);
     return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);window.removeEventListener("blur",blur);document.removeEventListener("visibilitychange",hidden);window.removeEventListener("pagehide",persistAdventure);};
-  },[clearInput,releaseHand,persistAdventure,retry,syncDirections,togglePause,unlock]);
+  },[clearInput,releaseHand,persistAdventure,retry,syncHeldControls,togglePause,unlock]);
 
-  const hold=(direction:"left"|"right",e:React.PointerEvent<HTMLButtonElement>)=>{
-    e.preventDefault();unlock();focusGame();e.currentTarget.setPointerCapture(e.pointerId);touchDirectionsRef.current[direction]=true;syncDirections();
+  const hold=(direction:"left"|"right"|"crouch",e:React.PointerEvent<HTMLButtonElement>)=>{
+    e.preventDefault();unlock();focusGame();e.currentTarget.setPointerCapture(e.pointerId);touchDirectionsRef.current[direction]=true;syncHeldControls();
   };
-  const release=(direction:"left"|"right")=>{touchDirectionsRef.current[direction]=false;syncDirections();};
-  const jump=()=>{unlock();focusGame();if(worldRef.current.phase==="playing")controlsRef.current.jump=true;};
+  const release=(direction:"left"|"right"|"crouch")=>{touchDirectionsRef.current[direction]=false;syncHeldControls();};
   const callHand=()=>{unlock();focusGame();controlsRef.current.draw=true;};
   const manipulate=()=>{unlock();focusGame();controlsRef.current.interact=true;};
   const cancelDrawing=()=>{
@@ -346,7 +359,7 @@ export default function Home(){
       }else{
         touchCompanionRef.current=true;
         const p=worldRef.current.player;
-        if(Math.hypot(pointerRef.current.x-p.x,pointerRef.current.y-(p.y-78))<45)tapRef.current={point:{...pointerRef.current},remaining:.35};
+        if(Math.hypot(pointerRef.current.x-p.x,pointerRef.current.y-(p.y-(p.crouching?43:78)))<45)tapRef.current={point:{...pointerRef.current},remaining:.35};
       }
       return;
     }
@@ -427,9 +440,9 @@ export default function Home(){
         <div className="scene-title"><span className="chapter">NIVEAU <strong>{String(levelIndex+1).padStart(2,"0")}</strong><span>/ {String(PLATFORM_LEVELS.length).padStart(2,"0")}</span></span><div className="heading-divider"/><h1>{level.title}</h1></div>
         <button className="progress-summary" onClick={()=>setPanel("levels")} aria-label={completed+" niveaux terminés, "+totalStars+" étoiles. Choisir un niveau."}><span className="progress-dots">{scores.map((s,i)=><i key={i} className={s.done?"done":i===levelIndex?"current":""}/>)}</span><span><b>{completed}</b> / {PLATFORM_LEVELS.length} niveaux</span><List size={18}/></button>
       </section>
-      <section ref={stageRef} className={"game-section platform-section"+(fullScreen?" expanded":"")+(cinema?" cinema-mode":"")} style={{"--scene-bg":palette.background} as React.CSSProperties} aria-label="Jeu de plateforme Un seul trait">
+      <section ref={stageRef} className={"game-section platform-section"+(fullScreen?" expanded":"")+(cinema?" cinema-mode":"")} style={{"--scene-bg":palette.background} as React.CSSProperties} aria-label="Aventure dessinée Un seul trait">
         <div className="stage platform-stage">
-          <canvas ref={canvasRef} className={view.phase==="drawing"?"player-drawing":""} tabIndex={0} role="application" aria-label={"Niveau "+(levelIndex+1)+", "+level.title+". "+bindingText("left")+" et "+bindingText("right")+" pour marcher. "+bindingText("jump")+" pour sauter. "+bindingText("draw")+" pour dessiner. "+bindingText("interact")+" pour manipuler une poignée."} onPointerDown={startStroke} onPointerMove={moveStroke} onPointerUp={finishStroke} onPointerCancel={interruptedStroke} onLostPointerCapture={interruptedStroke} onPointerLeave={()=>{if(strokePointerRef.current===null&&mechanismPointerRef.current===null){pointerRef.current=null;pointerClientRef.current=null;}}}/>
+          <canvas ref={canvasRef} className={view.phase==="drawing"?"player-drawing":""} tabIndex={0} role="application" aria-label={"Niveau "+(levelIndex+1)+", "+level.title+". "+bindingText("left")+" et "+bindingText("right")+" pour marcher. "+bindingText("crouch")+" pour te baisser. "+bindingText("draw")+" pour dessiner. "+bindingText("interact")+" pour manipuler une poignée."} onPointerDown={startStroke} onPointerMove={moveStroke} onPointerUp={finishStroke} onPointerCancel={interruptedStroke} onLostPointerCapture={interruptedStroke} onPointerLeave={()=>{if(strokePointerRef.current===null&&mechanismPointerRef.current===null){pointerRef.current=null;pointerClientRef.current=null;}}}/>
           {!ready&&<div className="canvas-loading">Le niveau se dessine…</div>}
           <div className="platform-hud">
             <div className="platform-hud-left"><span className="status-pill"><i/>{paused?"PAUSE":view.phase==="drawing"?"À TOI DE DESSINER":view.phase==="dead"?"TOUCHÉ":view.phase==="won"?"BIEN ARRIVÉ":view.handling?"UN COUP DE MAIN":"EN ROUTE"}</span><span className="death-count" aria-label={view.deaths+" morts"}><Skull size={15}/>{view.deaths}</span></div>
@@ -449,7 +462,7 @@ export default function Home(){
             <span className="control-caption">SE DÉPLACER</span>
             <div className="direction-buttons">{(["left","right"] as const).map(d=><button key={d} className="direction-button" aria-label={d==="left"?"Aller à gauche":"Aller à droite"} disabled={frozen||view.phase!=="playing"} onPointerDown={e=>hold(d,e)} onPointerUp={()=>release(d)} onPointerCancel={()=>release(d)} onLostPointerCapture={()=>release(d)}>{d==="left"?<ArrowLeft size={22}/>:<ArrowRight size={22}/>}</button>)}</div>
           </div>
-          <button className="jump-button" disabled={frozen||view.phase!=="playing"} onPointerDown={e=>{e.preventDefault();jump();}} onClick={e=>{if(e.detail===0)jump();}}><ArrowUp size={21}/><span>Sauter<small>{bindingText("jump")}</small></span></button>
+          <button className={"crouch-button"+(view.crouching?" is-active":"")} aria-pressed={view.crouching} disabled={frozen||view.phase!=="playing"} onPointerDown={e=>hold("crouch",e)} onPointerUp={()=>release("crouch")} onPointerCancel={()=>release("crouch")} onLostPointerCapture={()=>release("crouch")} onClick={e=>{if(e.detail===0){unlock();focusGame();touchDirectionsRef.current.crouch=!touchDirectionsRef.current.crouch;syncHeldControls();}}}><ArrowDown size={21}/><span>Se baisser<small>{bindingText("crouch")} · maintenir</small></span></button>
           <div className="platform-dock-divider"/>
           <button className={"hand-button"+(available||view.phase==="drawing"?" is-available":"")} disabled={frozen||(!available&&view.phase!=="drawing")} onClick={view.phase==="drawing"?cancelDrawing:callHand}><Pencil size={22}/><span>{view.phase==="drawing"?"Quitter le dessin":view.redrawing?"Redessiner":"Dessiner un passage"}<small>{bindingText("draw")+" · "+(view.phase==="drawing"?"ANNULER":available?"À LA SOURIS OU AU DOIGT":"PRÈS D’UN PASSAGE")}</small></span><ChevronRight size={17}/></button>
           <button className={"manipulate-button"+(mechanism?" is-available":"")} disabled={frozen||view.phase!=="playing"||!mechanism} onClick={manipulate}><Hand size={21}/><span>Manipuler<small>{bindingText("interact")}</small></span></button>
@@ -457,12 +470,12 @@ export default function Home(){
         </div>
       </section>
       <div className={"feedback-row"+(drawingError?" error":"")}><p role="status" aria-live="polite">{view.phase==="drawing"||available?<Pencil size={16}/>:<Flag size={16}/>}<span>{available&&view.phase==="playing"?(view.redrawing?"Tu peux redessiner ce passage si besoin.":"Passe en mode dessin, puis relie les deux points avec ton trait."):mechanism&&view.phase==="playing"?mechanism.prompt:tip}</span></p><button className="settings-button" onClick={()=>setPanel("settings")} aria-label="Réglages"><Settings2 size={16}/><span>Réglages</span></button></div>
-      <footer className="site-footer"><span>D’après <a href="https://www.youtube.com/watch?v=qXr2DUwI6UQ" target="_blank" rel="noreferrer">La Linea</a> d’Osvaldo Cavandoli.</span><span>{storageOk?"Aventure et commandes sauvegardées dans ce navigateur.":"Progression conservée pour cette session."}</span></footer>
+      <footer className="site-footer"><span>D’après <a href="https://www.youtube.com/watch?v=8IHHHXIzDpA" target="_blank" rel="noreferrer">La Linea</a> d’Osvaldo Cavandoli.</span><span>{storageOk?"Aventure et commandes sauvegardées dans ce navigateur.":"Progression conservée pour cette session."}</span></footer>
     </div>
     <dialog ref={dialogRef} className={"game-dialog"+(panel==="levels"?" levels-dialog":"")} aria-labelledby="dialog-title" onCancel={()=>setPanel(null)} onClick={e=>{if(e.target===e.currentTarget)setPanel(null);}}>
       <div className="dialog-inner"><div className="dialog-top"><span className="eyebrow">UN SEUL TRAIT</span><button className="icon-button" aria-label="Fermer" onClick={()=>setPanel(null)}><X size={21}/></button></div>
       {panel==="levels"&&<><h2 id="dialog-title">Les niveaux<span>.</span></h2><p className="dialog-intro">Six chapitres : passages à dessiner, mécanismes à déplacer et chemins à découvrir. Choisis un chapitre pour continuer ; Rejouer recommence le parcours.</p><div className="notebook-summary"><span><Check size={16}/>{completed} / {PLATFORM_LEVELS.length} terminés</span><span><Star size={17}/>{totalStars} / {PLATFORM_LEVELS.length*3} étoiles</span></div><div className="level-grid">{PLATFORM_LEVELS.map((l,i)=><button className={"level-card"+(i===levelIndex?" current":"")} key={l.id} onClick={()=>startLevel(i)} aria-label={"Niveau "+(i+1)+", "+l.title}><div className="level-preview" style={{background:PLATFORM_PALETTES[l.palette].background}}><LevelThumbnail index={i}/><span>{String(i+1).padStart(2,"0")}</span>{scores[i]?.done&&<i><Check size={13}/></i>}</div><div className="level-info"><strong>{l.title}</strong><small className="level-mechanics">{l.drawings.length} traits · {l.mechanisms?.length??0} mécanismes</small><span className="mini-stars">{[0,1,2].map(s=><Star key={s} size={12} fill={scores[i]?.stars>s?"currentColor":"none"}/>)}</span></div></button>)}</div></>}
-      {panel==="help"&&<><h2 id="dialog-title">À toi de jouer<span>.</span></h2><p className="dialog-intro">Vous avancez à deux : lui sur la ligne, toi avec le crayon et la main.</p><div className="help-steps"><div><span>01</span><section><h3>Avance et saute.</h3><p>{bindingText("left")} et {bindingText("right")} pour marcher ; {bindingText("jump")} pour sauter. Sur mobile, utilise les boutons sous le jeu.</p></section></div><div><span>02</span><section><h3>Dessine ton passage.</h3><p>Près d’un repère de crayon, appuie sur {bindingText("draw")}. Maintiens le clic ou le doigt et relie A à B. La main suit exactement ton geste. Relâche pour rendre ton trait praticable ; tu peux le redessiner ensuite.</p></section></div><div><span>03</span><section><h3>Donne-lui un coup de main.</h3><p>Attrape une poignée dorée et déplace-la le long de son rail : plateforme, porte ou roue. Tu peux marcher et sauter pendant la manipulation. Au clavier ou sur mobile, {bindingText("interact")} ou Manipuler déplace le mécanisme voisin jusqu’à l’autre extrémité.</p></section></div></div><div className="help-companion-note"><Hand size={18}/><p>Le personnage regarde ce qui manque, réclame ton aide et réagit quand tu touches sa tête. Les étoiles invitent à explorer les passages en hauteur. Une chute te ramène au dernier drapeau avec tes dessins.</p></div><div className="keyboard-help"><h3>Raccourcis</h3><p><kbd>{bindingText("jump")}</kbd> Sauter <kbd>{bindingText("draw")}</kbd> Dessiner</p><p><kbd>{bindingText("interact")}</kbd> Manipuler</p><p><kbd>{bindingText("pause")}</kbd> Pause <kbd>{bindingText("restart")}</kbd> Point de contrôle</p><button className="configure-controls-link" onClick={()=>setPanel("controls")}><Keyboard size={17}/>Configurer mes touches</button></div><button className="primary-button help-close" onClick={()=>setPanel(null)}>Jouer<ArrowRight size={18}/></button></>}
+      {panel==="help"&&<><h2 id="dialog-title">À toi de jouer<span>.</span></h2><p className="dialog-intro">Vous avancez à deux : lui sur la ligne, toi avec le crayon et la main.</p><div className="help-steps"><div><span>01</span><section><h3>Marche et baisse-toi.</h3><p>{bindingText("left")} et {bindingText("right")} pour marcher ; {bindingText("crouch")} pour te baisser. Sur mobile, utilise les boutons sous le jeu.</p></section></div><div><span>02</span><section><h3>Dessine ton passage.</h3><p>Près d’un repère de crayon, appuie sur {bindingText("draw")}. Maintiens le clic ou le doigt et relie A à B. La main suit exactement ton geste. Relâche pour rendre ton trait praticable ; tu peux le redessiner ensuite.</p></section></div><div><span>03</span><section><h3>Donne-lui un coup de main.</h3><p>Attrape une poignée dorée et déplace-la le long de son rail : plateforme, porte ou roue. Tu peux marcher et te baisser pendant la manipulation. Au clavier ou sur mobile, {bindingText("interact")} ou Manipuler déplace le mécanisme voisin jusqu’à l’autre extrémité.</p></section></div></div><div className="help-companion-note"><Hand size={18}/><p>Le personnage regarde ce qui manque, réclame ton aide et réagit quand tu touches sa tête. Baisse-toi sous les obstacles suspendus. Les étoiles se ramassent le long du chemin. Une chute te ramène au dernier drapeau avec tes dessins.</p></div><div className="keyboard-help"><h3>Raccourcis</h3><p><kbd>{bindingText("crouch")}</kbd> Se baisser <kbd>{bindingText("draw")}</kbd> Dessiner</p><p><kbd>{bindingText("interact")}</kbd> Manipuler</p><p><kbd>{bindingText("pause")}</kbd> Pause <kbd>{bindingText("restart")}</kbd> Point de contrôle</p><button className="configure-controls-link" onClick={()=>setPanel("controls")}><Keyboard size={17}/>Configurer mes touches</button></div><button className="primary-button help-close" onClick={()=>setPanel(null)}>Jouer<ArrowRight size={18}/></button></>}
       {panel==="controls"&&<><h2 id="dialog-title">Les commandes<span>.</span></h2><p className="dialog-intro">Deux touches au choix par action. Clique sur une case, puis appuie sur la touche voulue.</p><ControlsConfig bindings={bindings} onChange={next=>{clearInput();setBindings(next);}}/><div className="controls-dialog-actions"><button className="quiet-button" onClick={()=>setPanel("help")}><HelpCircle size={17}/>Comment jouer</button><button className="primary-button" onClick={()=>{setPanel(null);focusGame();}}>Retour au jeu<ArrowRight size={18}/></button></div></>}
       {panel==="settings"&&<><h2 id="dialog-title">Les réglages<span>.</span></h2><p className="dialog-intro">Image, réactions et confort de jeu.</p><button className="configure-controls-link" onClick={()=>setPanel("controls")}><Keyboard size={18}/>Configurer les touches<ChevronRight size={17}/></button><div className="setting-row"><div><h3>Voix et bruitages</h3><p>Réactions en grammelot et sons du jeu.</p></div><button className={"toggle"+(!muted?" on":"")} role="switch" aria-checked={!muted} aria-label="Voix et bruitages" onClick={()=>{unlock();setMuted(v=>!v);}}><span/></button></div><div className="voice-choice" role="group" aria-label="Type de voix"><button aria-pressed={voiceMode==="grammelot"} onClick={()=>setVoiceMode("grammelot")}>Grammelot</button><button aria-pressed={voiceMode==="italian"} onClick={()=>setVoiceMode("italian")}>Voix italienne</button></div><div className="setting-row"><div><h3>Mode cinéma</h3><p>Masque le compteur et les indications pendant la traversée.</p></div><button className={"toggle"+(cinema?" on":"")} role="switch" aria-checked={cinema} aria-label="Mode cinéma" onClick={()=>setCinema(v=>!v)}><span/></button></div><div className="setting-row"><div><h3>Éclaboussures rouges</h3><p>Désactive pour retrouver des particules blanches.</p></div><button className={"toggle"+(blood?" on":"")} role="switch" aria-checked={blood} aria-label="Éclaboussures rouges" onClick={()=>setBlood(v=>!v)}><span/></button></div><div className="setting-volume"><label htmlFor="volume">Volume <b>{volume}%</b></label><input id="volume" type="range" min="0" max="100" value={volume} onChange={e=>setVolume(Number(e.target.value))} onPointerUp={()=>{unlock();audioRef.current?.play("star");}}/></div><div className="setting-note"><Check size={17}/><p>Tes dessins, étoiles, mécanismes et commandes sont sauvegardés. En revenant, tu reprends au dernier drapeau. Clique sur Rejouer après une victoire pour repartir de zéro dans ce chapitre.</p></div><button className="primary-button help-close" onClick={()=>setPanel(null)}>Retour au jeu<ArrowRight size={18}/></button></>}
       </div>

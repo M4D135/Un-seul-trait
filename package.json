@@ -1,10 +1,12 @@
 {
   "name": "un-seul-trait",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Un jeu de plateforme et de dessin en français, inspiré de La Linea.",
   "type": "module",
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "vite --config scripts/public-vite.config.mjs",
     "build": "node scripts/public-build.mjs --out dist",

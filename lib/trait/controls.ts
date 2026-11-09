@@ -1,11 +1,11 @@
-export const ACTION_IDS = ['left', 'right', 'jump', 'draw', 'interact', 'pause', 'restart'] as const;
+export const ACTION_IDS = ['left', 'right', 'crouch', 'draw', 'interact', 'pause', 'restart'] as const;
 export type ActionId = typeof ACTION_IDS[number];
 export type KeyBindings = Record<ActionId, [string | null, string | null]>;
 
 export const ACTION_LABELS: Record<ActionId, string> = {
   left: 'Aller à gauche',
   right: 'Aller à droite',
-  jump: 'Sauter',
+  crouch: 'Se baisser',
   draw: 'Dessiner un passage',
   interact: 'Manipuler une poignée',
   pause: 'Pause / reprendre',
@@ -16,7 +16,7 @@ export const ACTION_LABELS: Record<ActionId, string> = {
 export const DEFAULT_BINDINGS: KeyBindings = {
   left: ['ArrowLeft', 'q'],
   right: ['ArrowRight', 'd'],
-  jump: [' ', 'ArrowUp'],
+  crouch: ['ArrowDown', 's'],
   draw: ['e', null],
   interact: ['f', 'Enter'],
   pause: ['p', 'Escape'],
@@ -79,15 +79,18 @@ export function sanitizeBindings(value: unknown): KeyBindings {
   const result = copyDefaults();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
   const record = value as Record<string, unknown>;
+  const customized = new Set<ActionId>();
   for (const action of ACTION_IDS) {
     const raw = record[action];
     if (!Array.isArray(raw)) continue;
     const slots = [0, 1].map(slot => typeof raw[slot] === 'string' ? normalizeKey(raw[slot]) : null) as KeyBindings[ActionId];
     if (slots[0] === slots[1]) slots[1] = null;
-    if (slots.some(Boolean)) result[action] = slots;
+    if (slots.some(Boolean)) { result[action] = slots; customized.add(action); }
   }
   const used = new Set<string>();
-  for (const action of ACTION_IDS) {
+  // A new action's defaults must never steal keys from an older custom action.
+  const priority = [...ACTION_IDS.filter(a => customized.has(a)), ...ACTION_IDS.filter(a => !customized.has(a))];
+  for (const action of priority) {
     for (const slot of [0, 1] as const) {
       const key = result[action][slot];
       if (key === null) continue;

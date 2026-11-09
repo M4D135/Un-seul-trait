@@ -13,7 +13,7 @@
  * No video frames, original audio or raster character assets ship.
  */
 
-export type CartoonMotion = 'idle' | 'walk' | 'jump' | 'fall' | 'grumpy' | 'happy';
+export type CartoonMotion = 'idle' | 'walk' | 'crouch' | 'crouch-walk' | 'fall' | 'grumpy' | 'happy';
 export type CartoonGesture = 'none' | 'peek' | 'point' | 'call' | 'impatient' | 'delighted' | 'curious' | 'angry' | 'settle';
 
 export type CartoonCharacterState = {
@@ -121,9 +121,9 @@ function safeScale(state: CartoonCharacterState): number {
 
 /** Exact WORLD x coordinates of the two ends of the grounded open contour. */
 export function getCharacterGroundSpan(state: CartoonCharacterState): { left: number; right: number } {
-  const endpoints = state.motion === 'walk'
+  const endpoints = state.motion === 'walk' || state.motion === 'crouch-walk'
     ? WALK[getCartoonWalkFrame(state.travel)].ground
-    : [214, 264];
+    : state.motion === 'crouch' ? [194, 278] : [214, 264];
   const scale = safeScale(state) * (state.facing === -1 ? -1 : 1);
   const a = state.x + (endpoints[0] - ORIGIN_X) * scale;
   const b = state.x + (endpoints[1] - ORIGIN_X) * scale;
@@ -132,23 +132,6 @@ export function getCharacterGroundSpan(state: CartoonCharacterState): { left: nu
 
 function lineThrough(ctx: CanvasRenderingContext2D, points: readonly Point[]) {
   for (const [x, y] of points) ctx.lineTo(x, y);
-}
-
-/** The rounded cranium and long nose are one curve; no separate eye. */
-function head(ctx: CanvasRenderingContext2D, offset: number, mouth: number) {
-  ctx.bezierCurveTo(188, 123 + offset, 189, 108 + offset, 201, 96 + offset);
-  ctx.bezierCurveTo(217, 80 + offset, 244, 75 + offset, 260, 86 + offset);
-  ctx.bezierCurveTo(278, 99 + offset, 255, 109 + offset, 237, 104 + offset);
-  ctx.lineTo(247, 112 + offset + mouth);
-}
-
-function mouthLine(ctx: CanvasRenderingContext2D, offset: number, mouth: number) {
-  // This short lower-lip bend is visible in the reference. Its right end
-  // rejoins the front contour, so it stays attached while the character talks.
-  ctx.beginPath();
-  ctx.moveTo(213, 110 + offset);
-  ctx.quadraticCurveTo(229, 116 + offset + mouth * .6, 247, 112 + offset + mouth);
-  ctx.stroke();
 }
 
 function traceWalk(ctx: CanvasRenderingContext2D, drawing: WalkDrawing, mouth: number, look = 0) {
@@ -191,89 +174,6 @@ function traceWalk(ctx: CanvasRenderingContext2D, drawing: WalkDrawing, mouth: n
   lineThrough(ctx, drawing.front);
 }
 
-function backAtRest(ctx: CanvasRenderingContext2D) {
-  ctx.moveTo(214, BASELINE);
-  ctx.quadraticCurveTo(220, 236, 219, 217);
-  // The resting hand is a few little notches in the silhouette, not a long
-  // swinging arm attached to the torso by a separate stroke.
-  lineThrough(ctx, [[215, 214], [219, 210], [214, 206], [218, 202], [211, 184]]);
-  ctx.quadraticCurveTo(208, 161, 205, 130);
-}
-
-function traceIdle(ctx: CanvasRenderingContext2D, mouth: number) {
-  backAtRest(ctx);
-  head(ctx, 0, mouth);
-  ctx.bezierCurveTo(260, 139, 270, 166, 267, 194);
-  ctx.quadraticCurveTo(265, 228, 264, BASELINE);
-}
-
-function traceGrumpy(ctx: CanvasRenderingContext2D, mouth: number) {
-  backAtRest(ctx);
-  head(ctx, 0, mouth);
-  lineThrough(ctx, [[261, 146], [288, 131], [294, 120]]);
-  ctx.quadraticCurveTo(299, 117, 299, 123);
-  lineThrough(ctx, [[296, 132], [308, 126]]);
-  ctx.quadraticCurveTo(314, 126, 310, 132);
-  lineThrough(ctx, [[301, 141], [314, 138]]);
-  ctx.quadraticCurveTo(321, 140, 315, 145);
-  lineThrough(ctx, [[300, 149], [279, 174], [268, 169]]);
-  ctx.quadraticCurveTo(270, 215, 264, BASELINE);
-}
-
-function happyBack(ctx: CanvasRenderingContext2D, airborne: boolean) {
-  if (airborne) {
-    ctx.moveTo(213, 254);
-    lineThrough(ctx, [[193, 246], [197, 239], [211, 240], [213, 220]]);
-  } else {
-    ctx.moveTo(214, BASELINE);
-    ctx.quadraticCurveTo(219, 229, 213, 209);
-  }
-  lineThrough(ctx, [[205, 184], [184, 159], [175, 142], [164, 143], [155, 136]]);
-  ctx.quadraticCurveTo(155, 130, 164, 134);
-  lineThrough(ctx, [[169, 136], [155, 124]]);
-  ctx.quadraticCurveTo(154, 118, 161, 123);
-  lineThrough(ctx, [[174, 133], [172, 122]]);
-  ctx.quadraticCurveTo(175, 116, 180, 125);
-  lineThrough(ctx, [[182, 140], [200, 154], [205, 130]]);
-}
-
-function happyFront(ctx: CanvasRenderingContext2D) {
-  lineThrough(ctx, [[262, 145], [282, 127], [286, 109]]);
-  ctx.quadraticCurveTo(290, 103, 294, 111);
-  lineThrough(ctx, [[291, 127], [300, 116]]);
-  ctx.quadraticCurveTo(306, 112, 306, 120);
-  lineThrough(ctx, [[298, 134], [309, 129]]);
-  ctx.quadraticCurveTo(315, 130, 310, 137);
-  lineThrough(ctx, [[302, 144], [291, 148], [274, 173]]);
-}
-
-function traceHappy(ctx: CanvasRenderingContext2D, mouth: number) {
-  happyBack(ctx, false);
-  head(ctx, 0, mouth);
-  happyFront(ctx);
-  ctx.quadraticCurveTo(273, 214, 264, BASELINE);
-}
-
-function traceAir(ctx: CanvasRenderingContext2D, mouth: number, falling: boolean) {
-  happyBack(ctx, true);
-  head(ctx, 0, mouth);
-  if (falling) {
-    // A wider reaching gesture on descent; still the same single silhouette.
-    lineThrough(ctx, [[265, 151], [287, 155], [302, 144]]);
-    ctx.quadraticCurveTo(310, 141, 307, 148);
-    lineThrough(ctx, [[301, 155], [314, 153]]);
-    ctx.quadraticCurveTo(321, 156, 313, 160);
-    lineThrough(ctx, [[300, 162], [307, 170]]);
-    ctx.quadraticCurveTo(307, 176, 300, 172);
-    lineThrough(ctx, [[289, 165], [270, 173]]);
-  } else {
-    happyFront(ctx);
-  }
-  ctx.quadraticCurveTo(265, 201, 253, 216);
-  lineThrough(ctx, [[271, 234], [291, 232], [297, 240], [274, 247], [250, 236], [237, 238], [224, 255]]);
-  ctx.closePath();
-}
-
 type ActingHead = { dx: number; dy: number; tilt: number; mouth: number };
 
 function headPoint([x, y]: Point, pose: ActingHead): Point {
@@ -282,125 +182,273 @@ function headPoint([x, y]: Point, pose: ActingHead): Point {
     130 + pose.dy + (x - 205) * sine + (y - 130) * cosine];
 }
 
+/** One oblong cranium/nose loop and its mouth notch, all in the outer contour. */
 function actingHead(ctx: CanvasRenderingContext2D, pose: ActingHead) {
-  ctx.bezierCurveTo(...headPoint([188, 123], pose), ...headPoint([189, 108], pose), ...headPoint([201, 96], pose));
-  ctx.bezierCurveTo(...headPoint([217, 80], pose), ...headPoint([244, 75], pose), ...headPoint([260, 86], pose));
-  ctx.bezierCurveTo(...headPoint([278, 99], pose), ...headPoint([255, 109], pose), ...headPoint([237, 104], pose));
-  ctx.lineTo(...headPoint([247, 112 + pose.mouth], pose));
+  const p = (point: Point) => headPoint(point, pose);
+  ctx.bezierCurveTo(...p([185, 126]), ...p([182, 111]), ...p([194, 95]));
+  ctx.bezierCurveTo(...p([208, 76]), ...p([238, 67]), ...p([259, 78]));
+  ctx.bezierCurveTo(...p([280, 86]), ...p([280, 98]), ...p([259, 104]));
+  ctx.quadraticCurveTo(...p([246, 109]), ...p([231, 105]));
+  ctx.lineTo(...p([254, 115]));
+  if (pose.mouth < 3) ctx.lineTo(...p([242, 123]));
+  else {
+    ctx.quadraticCurveTo(...p([233, 130 + pose.mouth * .6]), ...p([241, 135 + pose.mouth * .6]));
+    ctx.lineTo(...p([257, 119 + pose.mouth * .2]));
+  }
 }
 
-function actingLip(ctx: CanvasRenderingContext2D, pose: ActingHead) {
-  ctx.beginPath();
-  ctx.moveTo(...headPoint([213, 110], pose));
-  ctx.quadraticCurveTo(...headPoint([229, 116 + pose.mouth * .6], pose), ...headPoint([247, 112 + pose.mouth], pose));
-  ctx.stroke();
+function backAtRest(ctx: CanvasRenderingContext2D, dx = 0, dy = 0) {
+  ctx.moveTo(214, BASELINE);
+  ctx.quadraticCurveTo(222, 230, 218, 208);
+  // The hand at the hip is an interruption in the outline, as in the profiles.
+  lineThrough(ctx, [[213, 203], [219, 198], [214, 193], [219, 188], [214, 178]]);
+  ctx.quadraticCurveTo(210 + dx, 153 + dy, 205 + dx, 130 + dy);
 }
 
 function finishTorso(ctx: CanvasRenderingContext2D) {
-  ctx.quadraticCurveTo(271, 213, 264, BASELINE);
+  ctx.quadraticCurveTo(278, 214, 264, BASELINE);
+}
+
+function palmUp(ctx: CanvasRenderingContext2D) {
+  lineThrough(ctx, [[266, 149], [290, 170], [312, 151], [317, 137]]);
+  ctx.quadraticCurveTo(319, 130, 324, 135);
+  lineThrough(ctx, [[325, 145], [337, 136]]);
+  ctx.quadraticCurveTo(343, 135, 342, 141);
+  lineThrough(ctx, [[332, 152], [343, 147]]);
+  ctx.quadraticCurveTo(350, 148, 345, 155);
+  lineThrough(ctx, [[335, 161], [345, 159]]);
+  ctx.quadraticCurveTo(350, 163, 343, 168);
+  lineThrough(ctx, [[329, 175], [319, 173], [293, 194], [270, 176]]);
+}
+
+/** Open palms and long arms are silhouette folds, never attached stick limbs. */
+function openBack(ctx: CanvasRenderingContext2D) {
+  ctx.moveTo(214, BASELINE);
+  ctx.quadraticCurveTo(217, 218, 212, 188);
+  lineThrough(ctx, [[225, 156], [170, 179], [158, 194], [150, 202]]);
+  ctx.quadraticCurveTo(144, 203, 146, 196);
+  lineThrough(ctx, [[155, 184], [143, 195]]);
+  ctx.quadraticCurveTo(136, 198, 139, 190);
+  lineThrough(ctx, [[150, 176], [138, 185]]);
+  ctx.quadraticCurveTo(132, 185, 137, 178);
+  lineThrough(ctx, [[149, 166], [140, 164]]);
+  ctx.quadraticCurveTo(132, 160, 139, 156);
+  lineThrough(ctx, [[154, 160], [164, 156], [205, 130]]);
+}
+
+function openFront(ctx: CanvasRenderingContext2D) {
+  lineThrough(ctx, [[265, 150], [301, 179], [313, 179], [324, 171]]);
+  ctx.quadraticCurveTo(331, 171, 327, 179);
+  lineThrough(ctx, [[319, 185], [332, 201]]);
+  ctx.quadraticCurveTo(334, 209, 327, 207);
+  lineThrough(ctx, [[315, 193], [322, 212]]);
+  ctx.quadraticCurveTo(320, 220, 315, 213);
+  lineThrough(ctx, [[307, 194], [308, 211]]);
+  ctx.quadraticCurveTo(304, 218, 300, 210);
+  lineThrough(ctx, [[299, 191], [278, 173], [269, 164]]);
+  finishTorso(ctx);
+}
+
+function raisedBack(ctx: CanvasRenderingContext2D, fists: boolean) {
+  ctx.moveTo(214, BASELINE);
+  ctx.quadraticCurveTo(224, 215, 211, 171);
+  lineThrough(ctx, [[174, 184], [173, 145]]);
+  if (fists) {
+    lineThrough(ctx, [[164, 140], [159, 132]]);
+    ctx.quadraticCurveTo(157, 124, 165, 124);
+    lineThrough(ctx, [[171, 127], [175, 118]]);
+    ctx.quadraticCurveTo(181, 115, 184, 123);
+    lineThrough(ctx, [[193, 121], [198, 128], [190, 141]]);
+  } else {
+    lineThrough(ctx, [[160, 140], [154, 134]]);
+    ctx.quadraticCurveTo(152, 127, 160, 130);
+    lineThrough(ctx, [[173, 135], [169, 119]]);
+    ctx.quadraticCurveTo(170, 111, 176, 116);
+    lineThrough(ctx, [[181, 130], [187, 117]]);
+    ctx.quadraticCurveTo(194, 112, 194, 121);
+    lineThrough(ctx, [[189, 137], [198, 131], [202, 137], [193, 146]]);
+  }
+  lineThrough(ctx, [[199, 145], [205, 130]]);
+}
+
+function raisedFront(ctx: CanvasRenderingContext2D, fists: boolean) {
+  lineThrough(ctx, [[267, 146], [283, 155], [294, 137]]);
+  if (fists) {
+    lineThrough(ctx, [[288, 129], [291, 120], [298, 118], [302, 124], [309, 120]]);
+    ctx.quadraticCurveTo(317, 120, 315, 130);
+    lineThrough(ctx, [[322, 135], [319, 145], [307, 151]]);
+  } else {
+    lineThrough(ctx, [[284, 123]]);
+    ctx.quadraticCurveTo(282, 116, 289, 117);
+    lineThrough(ctx, [[300, 131], [305, 114]]);
+    ctx.quadraticCurveTo(312, 108, 313, 118);
+    lineThrough(ctx, [[310, 134], [322, 124]]);
+    ctx.quadraticCurveTo(331, 123, 326, 132);
+    lineThrough(ctx, [[316, 143], [325, 141], [329, 147], [314, 154], [307, 152]]);
+  }
+  lineThrough(ctx, [[289, 184], [271, 171]]);
+  finishTorso(ctx);
+}
+
+function joyBack(ctx: CanvasRenderingContext2D) {
+  ctx.moveTo(214, BASELINE);
+  ctx.quadraticCurveTo(230, 213, 213, 177);
+  lineThrough(ctx, [[153, 130], [138, 126], [121, 130], [106, 124]]);
+  ctx.quadraticCurveTo(101, 118, 110, 116);
+  lineThrough(ctx, [[123, 119], [110, 111]]);
+  ctx.quadraticCurveTo(107, 105, 114, 103);
+  lineThrough(ctx, [[127, 114], [120, 100]]);
+  ctx.quadraticCurveTo(120, 92, 127, 97);
+  lineThrough(ctx, [[138, 112], [143, 107], [150, 113], [151, 122], [198, 147], [205, 130]]);
+}
+
+function joyFront(ctx: CanvasRenderingContext2D) {
+  lineThrough(ctx, [[258, 150], [308, 106], [314, 96], [310, 86]]);
+  ctx.quadraticCurveTo(306, 78, 313, 76);
+  lineThrough(ctx, [[321, 86], [332, 71]]);
+  ctx.quadraticCurveTo(340, 67, 338, 75);
+  lineThrough(ctx, [[328, 92], [344, 82]]);
+  ctx.quadraticCurveTo(353, 82, 347, 90);
+  lineThrough(ctx, [[334, 101], [349, 96]]);
+  ctx.quadraticCurveTo(357, 100, 349, 107);
+  lineThrough(ctx, [[331, 113], [322, 120], [278, 183]]);
+  finishTorso(ctx);
 }
 
 /**
- * Acting study: series 200 at ~3 s (angular crouch), ~7 s (hands by face),
- * ~37–41 s (small fist, raised palm and appeal toward the artist), and series
- * 100 at ~5 s (open, raised arms). These game reactions adapt those contour
- * gestures; their timings and input triggers are gameplay decisions.
- * All grounded poses retain exactly the same two floor contacts.
+ * The supplied pose sheet and the observed Quipos excerpts guide these held
+ * drawings: palms at 18.4–19.2 s (series 100), angular flexion at 20–21.2 s,
+ * open arms at 3.6–4.8 s (series 200), fists/hands near the head at 5.2–7.2 s.
+ * The game chooses when to hold them. They are adaptations, not footage from
+ * the separately linked YouTube video, whose images were unavailable.
  */
 function traceActing(
   ctx: CanvasRenderingContext2D, gesture: CartoonGesture, age: number,
   mouth: number, look: number, reducedMotion: boolean,
-): ActingHead {
-  // Deliberate held drawings, not a continuously bobbing idle skeleton.
-  const beat = reducedMotion ? 0 : age < .24 ? 0 : age < .56 ? 1 : 2;
-  const pose: ActingHead = { dx: 0, dy: 0, tilt: look * .15, mouth };
+) {
+  const beat = reducedMotion ? 1 : age < .34 ? 0 : age < .78 ? 1 : 2;
+  const pose: ActingHead = { dx: 0, dy: 0, tilt: look * .18, mouth };
   if (gesture === 'peek') {
-    pose.dx = 13; pose.dy = 10; pose.tilt = look < -.2 ? -.18 : .2;
+    pose.dx = 27; pose.dy = 28; pose.tilt = look < -.3 ? -.1 : .25;
     ctx.moveTo(214, BASELINE);
-    ctx.quadraticCurveTo(219, 232, 216, 211);
-    lineThrough(ctx, [[211, 205], [216, 201], [212, 196], [216, 190], [218, 140]]);
-    actingHead(ctx, pose);
-    ctx.quadraticCurveTo(284, 162, 279, 196);
-    finishTorso(ctx);
+    lineThrough(ctx, [[221, 234], [206, 218]]);
+    ctx.quadraticCurveTo(197, 199, 216, 180);
+    ctx.lineTo(232, 158); actingHead(ctx, pose);
+    lineThrough(ctx, [[290, 180], [304, 196], [298, 211], [291, 207], [292, 218], [285, 219], [279, 202], [268, 194]]);
+    ctx.quadraticCurveTo(281, 220, 264, BASELINE);
   } else if (gesture === 'settle') {
-    // Two brief compression drawings keep the base on the landing surface.
     const deep = reducedMotion || age < .11;
-    pose.dy = deep ? 25 : 10;
+    pose.dy = deep ? 30 : 12; pose.tilt = .1;
     ctx.moveTo(214, BASELINE);
-    lineThrough(ctx, [[deep ? 195 : 207, deep ? 229 : 231], [216, 211], [213, 181], [205, 130 + pose.dy]]);
+    lineThrough(ctx, [[deep ? 193 : 205, 233], [215, 212], [215, 181], [205, 130 + pose.dy]]);
     actingHead(ctx, pose);
-    lineThrough(ctx, [[269, 177], [269, 208], [deep ? 291 : 278, 229], [264, BASELINE]]);
+    lineThrough(ctx, [[270, 181], [269, 209], [deep ? 292 : 279, 232], [264, BASELINE]]);
+  } else if (gesture === 'call' && beat === 0) {
+    pose.tilt = -.32; pose.mouth = Math.max(mouth, 8);
+    openBack(ctx); actingHead(ctx, pose); openFront(ctx);
   } else if (gesture === 'call' || gesture === 'angry') {
-    pose.tilt = gesture === 'angry' ? .08 : -.17;
-    pose.mouth = Math.max(mouth, beat === 1 ? 13 : 6);
-    ctx.moveTo(214, BASELINE);
-    ctx.quadraticCurveTo(220, 213, 210, 169);
-    lineThrough(ctx, [[181, 180], [184, 153], [174, 150], [169, 145], [172, 141], [184, 146], [185, 136]]);
-    ctx.quadraticCurveTo(189, 131, 192, 137);
-    lineThrough(ctx, [[191, 148], [199, 143], [205, 130]]);
-    actingHead(ctx, pose);
-    lineThrough(ctx, [[264, 145], [279, 151], [286, 130], [280, 122], [282, 115], [289, 121], [293, 130], [298, 121]]);
-    ctx.quadraticCurveTo(304, 119, 303, 126);
-    lineThrough(ctx, [[299, 137], [301, 144], [289, 153], [285, 177], [270, 168]]);
-    finishTorso(ctx);
+    const fists = gesture === 'angry' && beat !== 2;
+    pose.tilt = fists ? -.12 : -.3;
+    pose.mouth = Math.max(mouth, beat === 1 ? 15 : 7);
+    raisedBack(ctx, fists); actingHead(ctx, pose); raisedFront(ctx, fists);
   } else if (gesture === 'point') {
-    pose.tilt = look < -.25 ? -.15 : .08;
+    pose.tilt = look < -.25 ? -.27 : -.08;
     backAtRest(ctx); actingHead(ctx, pose);
-    // The pointing hand and both sides of its forearm belong to the outline.
-    if(look < -.25) {
-      lineThrough(ctx, [[263, 149], [282, 145], [300, 126], [302, 113], [308, 108], [311, 98]]);
-      ctx.quadraticCurveTo(315, 93, 317, 99);
-      lineThrough(ctx, [[314, 114], [321, 112], [325, 117], [319, 122], [320, 130], [310, 134], [291, 164], [268, 174]]);
+    if (beat === 0) palmUp(ctx);
+    else if (look < -.25) {
+      lineThrough(ctx, [[266, 150], [287, 147], [312, 121], [313, 108], [322, 101], [326, 84]]);
+      ctx.quadraticCurveTo(330, 77, 335, 85);
+      lineThrough(ctx, [[332, 106], [341, 100], [347, 104], [342, 114], [349, 117], [345, 125], [332, 133], [323, 132], [295, 169], [270, 177]]);
     } else {
-      lineThrough(ctx, [[263, 149], [285, 163], [315, 161], [333, 158]]);
-      ctx.quadraticCurveTo(340, 158, 337, 163);
-      lineThrough(ctx, [[324, 167], [332, 170], [329, 176], [322, 174], [325, 180], [320, 183], [313, 174], [281, 186], [268, 174]]);
+      lineThrough(ctx, [[267, 152], [293, 164], [328, 158], [355, 151]]);
+      ctx.quadraticCurveTo(364, 150, 364, 157);
+      lineThrough(ctx, [[342, 166], [354, 170]]);
+      ctx.quadraticCurveTo(358, 177, 350, 178);
+      lineThrough(ctx, [[339, 175], [347, 183], [343, 189], [331, 182], [328, 176], [292, 189], [270, 177]]);
     }
     finishTorso(ctx);
   } else if (gesture === 'impatient') {
-    pose.tilt = beat === 1 ? .13 : .04;
-    pose.mouth = Math.max(mouth, beat === 1 ? 7 : 2);
-    backAtRest(ctx); actingHead(ctx, pose);
-    // A small fist at the waist, as in the film, instead of a detached arm.
-    lineThrough(ctx, [[266, 149], [287, 172], [282, 189], [275, 192], [271, 188], [276, 183], [269, 185], [266, 201]]);
+    pose.tilt = beat === 1 ? -.15 : .04;
+    pose.mouth = Math.max(mouth, beat === 1 ? 10 : 2);
+    ctx.moveTo(214, BASELINE);
+    ctx.quadraticCurveTo(223, 235, 220, 211);
+    lineThrough(ctx, [[211, 204], [199, 214], [190, 213], [193, 202], [187, 199], [192, 192], [181, 175], [205, 140], [205, 130]]);
+    actingHead(ctx, pose);
+    lineThrough(ctx, [[273, 150], [298, 175], [289, 201], [277, 207], [271, 201], [281, 194], [270, 195], [268, 213]]);
     finishTorso(ctx);
   } else if (gesture === 'curious') {
-    pose.tilt = -.1; pose.mouth = Math.max(mouth, 2);
-    backAtRest(ctx); actingHead(ctx, pose);
-    lineThrough(ctx, [[265, 145], [290, 134], [283, 106], [275, 105], [269, 100], [270, 94], [278, 99], [281, 93]]);
-    ctx.quadraticCurveTo(286, 91, 287, 98);
-    lineThrough(ctx, [[287, 105], [302, 133], [289, 158], [268, 170]]);
+    pose.tilt = -.17; pose.mouth = Math.max(mouth, 4);
+    ctx.moveTo(214, BASELINE);
+    ctx.quadraticCurveTo(223, 217, 212, 166);
+    lineThrough(ctx, [[176, 180], [180, 146], [168, 143], [163, 136], [170, 130], [179, 131], [181, 120]]);
+    ctx.quadraticCurveTo(186, 113, 192, 120);
+    lineThrough(ctx, [[198, 119], [205, 126], [196, 139], [205, 130]]);
+    actingHead(ctx, pose);
+    lineThrough(ctx, [[273, 155], [283, 174], [277, 197], [285, 200], [284, 206], [277, 208], [280, 214], [273, 216]]);
     finishTorso(ctx);
   } else if (gesture === 'delighted') {
-    pose.tilt = beat === 0 ? .08 : -.2;
-    pose.mouth = Math.max(mouth, beat === 1 ? 10 : 4);
-    backAtRest(ctx); actingHead(ctx, pose);
-    if (beat === 0) {
-      // A small open-palm acknowledgement before the raised-hand drawing.
-      lineThrough(ctx, [[264, 148], [281, 166], [302, 154], [307, 143], [313, 141], [313, 150], [323, 147]]);
-      ctx.quadraticCurveTo(330, 148, 325, 154);
-      lineThrough(ctx, [[315, 159], [304, 170], [280, 185], [268, 174]]);
-    } else {
-      lineThrough(ctx, [[262, 145], [283, 126], [294, 103], [290, 94], [293, 88], [298, 99], [305, 89]]);
-      ctx.quadraticCurveTo(311, 86, 310, 93);
-      lineThrough(ctx, [[303, 108], [312, 101], [317, 104], [305, 118], [299, 135], [278, 162], [268, 173]]);
-    }
-    finishTorso(ctx);
+    pose.tilt = beat === 0 ? -.18 : -.46;
+    pose.mouth = Math.max(mouth, beat === 1 ? 12 : 5);
+    if (beat === 0) { backAtRest(ctx); actingHead(ctx, pose); palmUp(ctx); finishTorso(ctx); }
+    else { joyBack(ctx); actingHead(ctx, pose); joyFront(ctx); }
   } else {
     backAtRest(ctx); actingHead(ctx, pose);
-    ctx.bezierCurveTo(260, 139, 270, 166, 267, 194);
-    ctx.quadraticCurveTo(265, 228, 264, BASELINE);
+    ctx.bezierCurveTo(265, 147, 281, 183, 270, 212);
+    ctx.quadraticCurveTo(265, 238, 264, BASELINE);
   }
-  return pose;
+}
+
+/**
+ * Low movement adapts the angular knee/hip flexion of series 100 at 20–21.2 s.
+ * Four drawn edge folds retain the confirmed forward order. Bending the torso
+ * does not invent a joint rig, separate shoes or a second line between legs.
+ * The head stays full size while the body folds beneath it.
+ */
+function crouchPoint([x, y]: Point): Point {
+  const bend = clamp((BASELINE - y) / 110, 0, 1);
+  return [x + bend * 45, BASELINE - (BASELINE - y) * .36];
+}
+
+function lowHand(ctx: CanvasRenderingContext2D, shoulder: Point) {
+  const [x, y] = shoulder;
+  lineThrough(ctx, [[x + 20, y + 10], [x + 31, y + 8], [x + 38, y + 15],
+    [x + 29, y + 14], [x + 32, y + 21], [x + 25, y + 21],
+    [x + 17, y + 15], [x + 2, y + 10]]);
+}
+
+function traceCrouch(ctx: CanvasRenderingContext2D, drawing: WalkDrawing | null, mouth: number) {
+  if (!drawing) {
+    ctx.moveTo(194, BASELINE);
+    lineThrough(ctx, [[204, 248], [181, 236], [213, 221], [237, 210]]);
+    actingHead(ctx, { dx: 32, dy: 80, tilt: .25, mouth: mouth * .4 });
+    ctx.lineTo(298, 223); lowHand(ctx, [298, 223]);
+    lineThrough(ctx, [[269, 238], [286, 251], [278, BASELINE]]);
+    return;
+  }
+  const back = drawing.back.map(crouchPoint), front = drawing.front.map(crouchPoint);
+  const neck = back[back.length - 1];
+  ctx.moveTo(...back[0]); lineThrough(ctx, back.slice(1));
+  actingHead(ctx, { dx: neck[0] - 205, dy: neck[1] - 130, tilt: .25, mouth: mouth * .4 });
+  ctx.lineTo(...front[0]); lowHand(ctx, front[0]);
+  lineThrough(ctx, front.slice(1));
+}
+
+/** Falling reaches for the edge; there is no ascending/jump performance. */
+function traceFall(ctx: CanvasRenderingContext2D, mouth: number) {
+  ctx.moveTo(215, 251);
+  lineThrough(ctx, [[206, 226], [199, 185], [165, 181], [147, 192], [141, 188], [149, 179], [138, 182], [136, 176], [149, 167], [158, 170], [205, 130]]);
+  actingHead(ctx, { dx: 0, dy: 0, tilt: -.15, mouth: Math.max(9, mouth) });
+  lineThrough(ctx, [[271, 152], [289, 121], [292, 79], [283, 72], [281, 65], [290, 64], [297, 71], [299, 54]]);
+  ctx.quadraticCurveTo(304, 48, 308, 55);
+  lineThrough(ctx, [[307, 73], [319, 60], [325, 64], [313, 81], [327, 76], [332, 83], [310, 94], [307, 139], [277, 180], [259, 215], [287, 244], [268, 237], [246, 229], [226, 251]]);
+  ctx.closePath();
 }
 
 function reactionTicks(ctx: CanvasRenderingContext2D, gesture: CartoonGesture, age: number) {
-  // The source uses a few short arcs at a sudden surprise (series 100 ~13 s).
-  // Keep them brief and close to the head, with the same white stroke.
   if ((gesture !== 'curious' && gesture !== 'angry') || age > .22) return;
   ctx.beginPath();
-  ctx.moveTo(197, 67); ctx.quadraticCurveTo(203, 58, 212, 57);
-  ctx.moveTo(188, 61); ctx.quadraticCurveTo(192, 52, 201, 49);
+  ctx.moveTo(185, 66); ctx.quadraticCurveTo(190, 55, 200, 52);
+  ctx.moveTo(175, 61); ctx.quadraticCurveTo(179, 50, 188, 45);
   ctx.stroke();
 }
 
@@ -408,42 +456,34 @@ function reactionTicks(ctx: CanvasRenderingContext2D, gesture: CartoonGesture, a
 export function drawCartoonCharacter(ctx: CanvasRenderingContext2D, state: CartoonCharacterState): void {
   const scale = safeScale(state);
   const facing = state.facing === -1 ? -1 : 1;
-  const frame = state.motion === 'walk' ? getCartoonWalkFrame(state.travel) : 0;
-  const headOffset = state.motion === 'walk' ? WALK[frame].headOffset : 0;
+  const walking = state.motion === 'walk' || state.motion === 'crouch-walk';
+  const frame = walking ? getCartoonWalkFrame(state.travel) : 0;
   const talk = clamp(Number.isFinite(state.talkAmount) ? state.talkAmount : 0, 0, 1);
-  const mouth = talk * 8 + (state.motion === 'grumpy' ? 3 : state.motion === 'happy' ? 2 : 0);
-  const locomotion = state.motion === 'walk' || state.motion === 'jump' || state.motion === 'fall';
-  const gesture = !locomotion ? state.gesture ?? 'none' : 'none';
+  const mouth = talk * 12;
+  const protectedPose = walking || state.motion === 'crouch' || state.motion === 'fall';
+  const gesture = protectedPose ? 'none' : state.gesture ?? 'none';
   const age = Math.max(0, state.gestureAge ?? 0);
   const look = clamp(Number.isFinite(state.look) ? state.look! : 0, -1, 1);
-  let expressiveHead: ActingHead | null = null;
-
   ctx.save();
   ctx.translate(state.x, state.y);
   ctx.scale(scale * facing, scale);
   ctx.translate(-ORIGIN_X, -BASELINE);
   ctx.lineWidth = Math.max(.3, state.stroke) / scale;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = state.ink;
-  ctx.fillStyle = state.background;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = state.ink; ctx.fillStyle = state.background;
   ctx.beginPath();
-  if (gesture !== 'none' || (state.motion === 'idle' && Math.abs(look) > .05)) {
-    expressiveHead = traceActing(ctx, gesture, age, mouth, look, !!state.reducedMotion);
-  } else switch (state.motion) {
-    case 'walk': traceWalk(ctx, WALK[frame], mouth, look); break;
-    case 'jump': traceAir(ctx, mouth, false); break;
-    case 'fall': traceAir(ctx, mouth, true); break;
-    case 'grumpy': traceGrumpy(ctx, mouth); break;
-    case 'happy': traceHappy(ctx, mouth); break;
-    default: traceIdle(ctx, mouth); break;
+  switch (state.motion) {
+    case 'walk': traceWalk(ctx, WALK[frame], talk * 8, look); break;
+    case 'crouch': traceCrouch(ctx, null, mouth); break;
+    case 'crouch-walk': traceCrouch(ctx, WALK[frame], mouth); break;
+    case 'fall': traceFall(ctx, mouth); break;
+    default: {
+      const acting = gesture !== 'none' ? gesture : state.motion === 'grumpy' ? 'impatient' : state.motion === 'happy' ? 'delighted' : 'none';
+      traceActing(ctx, acting, state.motion === 'happy' && gesture === 'none' ? .5 : age, mouth, look, !!state.reducedMotion);
+    }
   }
-  // fill() closes an open grounded path only for the background mask. stroke()
-  // keeps its two ends open, joining the ground without a horizontal baseline.
-  ctx.fill();
-  ctx.stroke();
-  if (expressiveHead) actingLip(ctx, expressiveHead);
-  else if (state.motion !== 'walk') mouthLine(ctx, headOffset, mouth);
+  // Filling closes the mask; the stroked ground contour remains open.
+  ctx.fill(); ctx.stroke();
   if (!state.reducedMotion) reactionTicks(ctx, gesture, age);
   ctx.restore();
 }
