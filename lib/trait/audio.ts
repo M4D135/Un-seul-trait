@@ -1,4 +1,6 @@
 import { embeddedAudioBytes, measureOriginalEnvelope, originalVoiceAsset, OriginalVoiceDeck, ORIGINAL_VOICE_CLIPS, ORIGINAL_VOICE_DURATION, type ClipEnvelope, type OriginalSpeechContext, type OriginalVoiceClip } from './original-media';
+import { FoleyEngine, type FoleyScene } from './foley';
+export type { FoleyScene, FoleyBird, FoleyMechanism } from './foley';
 
 export type GameSound =
   | 'draw'
@@ -8,7 +10,9 @@ export type GameSound =
   | 'grumble'
   | 'win'
   | 'erase'
-  | 'click';
+  | 'click'
+  | 'mechanism-stop'
+  | 'mechanism-ready';
 
 export type GameSpeech = OriginalSpeechContext;
 export type VoiceMode = 'original' | 'grammelot' | 'italian';
@@ -108,6 +112,8 @@ const COOLDOWN: Record<GameSound, number> = {
   win: 0.9,
   erase: 0.15,
   click: 0.04,
+  'mechanism-stop': .18,
+  'mechanism-ready': .35,
 };
 
 /**
@@ -121,6 +127,8 @@ export class GameAudio {
   private glottalWave: PeriodicWave | null = null;
   private voices = new Set<Voice>();
   private pencil: PencilVoice | null = null;
+  private foley: FoleyEngine | null = null;
+  private pendingMechanismReady: number | null = null;
   private voiceMode: VoiceMode = 'original';
   private originalBuffer: AudioBuffer | null = null;
   private originalLoad: Promise<AudioBuffer | null> | null = null;
@@ -138,7 +146,6 @@ export class GameAudio {
   private enabled = true;
   private volume = 0.4;
   private disposed = false;
-  private stepIndex = 0;
   private gestureUnlocked = false;
   private synthesis: SpeechSynthesis | null = null;
   private italianVoice: SpeechSynthesisVoice | null = null;
@@ -152,9 +159,27 @@ export class GameAudio {
   private lastSpoken: Partial<Record<GameSpeech, number>> = {};
   private lastSpeechAt = -Infinity;
   private readonly onVoicesChanged = () => this.refreshItalianVoice();
+  private lifecycleWindow: Window | null = null;
+  private lifecycleDocument: Document | null = null;
+  private backgrounded = false;
+  private readonly onPageBlur = () => { this.backgrounded = true; this.hush(); };
+  private readonly onPageFocus = () => {
+    this.backgrounded = typeof document !== 'undefined' && document.hidden;
+    this.foley?.hush();
+  };
+  private readonly onPageVisibility = () => {
+    if (typeof document !== 'undefined' && document.hidden) this.onPageBlur();
+    else {
+      this.backgrounded = typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus();
+      this.foley?.hush();
+    }
+  };
 
   unlock(): void {
     if (this.disposed || typeof window === 'undefined') return;
+    this.attachPageLifecycle();
+    this.backgrounded = typeof document !== 'undefined' && document.hidden;
+    if (this.backgrounded) return;
     this.gestureUnlocked = true;
     if (this.voiceMode === 'italian') this.prepareSpeech();
 
@@ -225,10 +250,24 @@ export class GameAudio {
 
   getOriginalVoiceStatus(): OriginalVoiceStatus { return this.originalStatus; }
 
+  /** Observe a frame without unlocking audio. Only visible, nearby moving objects sound. */
+  updateFoley(scene: FoleyScene): void {
+    if (this.disposed || !this.pageAudible() || !this.gestureUnlocked || !this.enabled || !this.volume
+      || !this.context || !this.master || this.context.state !== 'running') {
+      this.pendingMechanismReady = null; this.foley?.hush(); return;
+    }
+    try {
+      this.foley ??= new FoleyEngine(this.context, this.master);
+      const confirmation = this.pendingMechanismReady !== null && this.context.currentTime - this.pendingMechanismReady < .25;
+      this.pendingMechanismReady = null;
+      this.foley.update(scene, confirmation);
+    } catch { this.foley?.hush(); }
+  }
+
   /** Start paper friction after unlock(). Speed is measured in scene units/second. */
   startPencil(speed = 0): void {
     const context = this.context;
-    if (this.pencil || this.disposed || !this.gestureUnlocked || !this.enabled || !this.volume || !context || !this.master || context.state === 'closed') return;
+    if (this.pencil || this.disposed || !this.pageAudible() || !this.gestureUnlocked || !this.enabled || !this.volume || !context || !this.master || context.state === 'closed') return;
     try {
       const source = context.createBufferSource();
       const filter = context.createBiquadFilter();
@@ -252,7 +291,7 @@ export class GameAudio {
     if (!Number.isFinite(speed)) return;
     if (!this.pencil && speed > 1) this.startPencil();
     const pencil = this.pencil, context = this.context;
-    if (!pencil || !context || this.disposed || !this.enabled || !this.volume) return;
+    if (!pencil || !context || this.disposed || !this.pageAudible() || !this.enabled || !this.volume) return;
     const motion = Math.min(1,Math.sqrt(Math.max(0,speed)/600));
     const weight = Math.max(0,Math.min(1,Number.isFinite(pressure)?pressure:.6));
     const amplitude = speed > 1 ? (.006 + motion*.03) * (.45 + weight*.55) : 0;
@@ -283,7 +322,7 @@ export class GameAudio {
 
   /** At most one reaction, including an initial sample load; no native speech queue. */
   speak(kind: GameSpeech): void {
-    if (this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0) return;
+    if (this.disposed || !this.pageAudible() || !this.gestureUnlocked || !this.enabled || this.volume === 0) return;
 
     const now = speechClock();
     const audioNow = this.context?.currentTime ?? 0;
@@ -366,7 +405,7 @@ export class GameAudio {
 
   /** Original mode follows the decoded sample's RMS envelope; no microphone. */
   getTalkAmount(): number {
-    if (this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0) return 0;
+    if (this.disposed || !this.pageAudible() || !this.gestureUnlocked || !this.enabled || this.volume === 0) return 0;
 
     if (this.utterance && this.speechStartedAt !== null) {
       const now = speechClock();
@@ -399,6 +438,7 @@ export class GameAudio {
     const context = this.context;
     if (
       this.disposed ||
+      !this.pageAudible() ||
       !this.enabled ||
       this.volume === 0 ||
       !context ||
@@ -416,17 +456,21 @@ export class GameAudio {
           this.scratch(now, 0.055, 0.026, 1800);
           break;
         case 'click':
-          this.tone(now, 640, 0.055, 0.075, 'sine', 860);
+          this.localEffect('click');
           break;
-        case 'step': {
-          const frequency = this.stepIndex++ % 2 ? 210 : 245;
-          this.tone(now, frequency, 0.07, 0.095, 'sine', 105);
+        case 'step':
+          this.localEffect('step');
           break;
-        }
         case 'ready':
-          [523.25, 659.25, 783.99].forEach((note, index) => {
-            this.tone(now + index * 0.075, note, 0.18, 0.08, 'triangle');
-          });
+          this.localEffect('ready');
+          break;
+        case 'mechanism-ready':
+          // Simulation events precede updateFoley in the same render. Reconcile
+          // the release with a physical endpoint instead of layering two impacts.
+          this.pendingMechanismReady = now;
+          break;
+        case 'mechanism-stop':
+          this.localEffect('stop');
           break;
         case 'star':
           this.tone(now, 1174.66, 0.22, 0.085, 'sine');
@@ -468,6 +512,12 @@ export class GameAudio {
     this.stopSpeech();
     this.stopVoices();
     this.originalAbort?.abort();
+    this.lifecycleWindow?.removeEventListener('blur', this.onPageBlur);
+    this.lifecycleWindow?.removeEventListener('focus', this.onPageFocus);
+    this.lifecycleWindow?.removeEventListener('pagehide', this.onPageBlur);
+    this.lifecycleDocument?.removeEventListener('visibilitychange', this.onPageVisibility);
+    this.lifecycleWindow = null;
+    this.lifecycleDocument = null;
     try {
       this.synthesis?.removeEventListener('voiceschanged', this.onVoicesChanged);
       this.master?.disconnect();
@@ -479,6 +529,8 @@ export class GameAudio {
     this.context = null;
     this.noise = null;
     this.glottalWave = null;
+    this.foley?.dispose();
+    this.foley = null;
     this.synthesis = null;
     this.italianVoice = null;
     this.originalBuffer = null;
@@ -498,6 +550,23 @@ export class GameAudio {
       this.refreshItalianVoice();
     } catch {
       this.synthesis = null;
+    }
+  }
+
+  private pageAudible(): boolean {
+    return !this.backgrounded && !(typeof document !== 'undefined' && document.hidden);
+  }
+
+  private attachPageLifecycle(): void {
+    if (!this.lifecycleWindow && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      this.lifecycleWindow = window;
+      window.addEventListener('blur', this.onPageBlur);
+      window.addEventListener('focus', this.onPageFocus);
+      window.addEventListener('pagehide', this.onPageBlur);
+    }
+    if (!this.lifecycleDocument && typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      this.lifecycleDocument = document;
+      document.addEventListener('visibilitychange', this.onPageVisibility);
     }
   }
 
@@ -605,7 +674,7 @@ export class GameAudio {
       if (this.pendingOriginal !== request) return;
       this.pendingOriginal = null;
       if (!buffer || request.epoch !== this.speechEpoch || speechClock() - request.requestedAt > 1.2
-        || this.disposed || !this.enabled || this.volume === 0 || this.voiceMode !== 'original'
+        || this.disposed || !this.pageAudible() || !this.enabled || this.volume === 0 || this.voiceMode !== 'original'
         || !this.context || this.context.state !== 'running') return;
       this.playOriginal(buffer, request.kind);
     });
@@ -613,7 +682,7 @@ export class GameAudio {
 
   private playOriginal(buffer: AudioBuffer, kind: GameSpeech): void {
     const context = this.context, master = this.master;
-    if (!context || !master || this.originalPlayback || this.utterance || this.disposed) return;
+    if (!context || !master || this.originalPlayback || this.utterance || this.disposed || !this.pageAudible()) return;
     const clip = this.originalDeck.pick(kind);
     const envelope = this.originalEnvelopes.get(clip.id);
     if (!envelope) return;
@@ -644,7 +713,7 @@ export class GameAudio {
   private playGrammelot(kind: GameSpeech, variant: number): void {
     const context = this.context;
     if (
-      this.voiceMode === 'original' || this.disposed || !this.gestureUnlocked || !this.enabled || this.volume === 0 ||
+      this.voiceMode === 'original' || this.disposed || !this.pageAudible() || !this.gestureUnlocked || !this.enabled || this.volume === 0 ||
       !context || !this.master || context.state === 'closed'
     ) return;
 
@@ -693,6 +762,8 @@ export class GameAudio {
   }
 
   private stopVoices(): void {
+    this.pendingMechanismReady = null;
+    this.foley?.hush();
     this.pencil = null;
     this.originalPlayback = null;
     for (const voice of this.voices) {
@@ -758,9 +829,21 @@ export class GameAudio {
       const context = this.context!;
       this.noise = context.createBuffer(1,Math.ceil(context.sampleRate*.5),context.sampleRate);
       const samples = this.noise.getChannelData(0);
-      for (let i=0;i<samples.length;i++) samples[i]=Math.random()*2-1;
+      // Paper has a soft body beneath its fine grain; plain white noise sounds like a hiss.
+      let fiber = 0;
+      for (let i=0;i<samples.length;i++) {
+        const fine = Math.random()*2-1;
+        fiber += (fine-fiber)*.085;
+        samples[i]=fine*.68+fiber*.65;
+      }
     }
     return this.noise;
+  }
+
+  private localEffect(kind: 'step' | 'click' | 'stop' | 'ready'): void {
+    if (!this.context || !this.master || this.context.state !== 'running') return;
+    this.foley ??= new FoleyEngine(this.context, this.master);
+    this.foley.effect(kind);
   }
 
   private syllable(

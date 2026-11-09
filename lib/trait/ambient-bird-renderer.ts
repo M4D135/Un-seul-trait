@@ -12,6 +12,9 @@ export type BirdPose = {
   wingLift: number;
   wristLift: number;
   farLift: number;
+  wingFold: number;
+  farFold: number;
+  bank: number;
   glide: number;
   tail: number;
   peck: number;
@@ -32,22 +35,32 @@ function strokeLift(phase: number): number {
   return cycle < .4 ? Math.cos(Math.PI * cycle / .4) : -Math.cos(Math.PI * (cycle - .4) / .6);
 }
 
+/** Primaries tuck on the recovery stroke and extend before pushing down. */
+function recoveryFold(phase: number): number {
+  const cycle = ((phase / TAU) % 1 + 1) % 1;
+  if (cycle <= .4) return 0;
+  return Math.sin(Math.PI * (cycle - .4) / .6) ** 2;
+}
+
 /** One anatomical rig throughout the shot, including both contact transitions. */
-export function sampleBirdPose(bird: AmbientBird, time: number, reducedMotion = false): BirdPose {
+export function sampleBirdPose(bird: AmbientBird, time: number, _reducedMotion = false): BirdPose {
   const settling = bird.phase === 'settling';
-  const flying = bird.phase === 'flying' || bird.phase === 'landing';
+  const flying = bird.phase === 'flying' || bird.phase === 'landing' || bird.phase === 'away';
   const settle = settling ? smooth(bird.age / .52) : 0;
-  const takeoff = flying ? smooth((bird.flight?.elapsed ?? 1) / .42) : 0;
-  const airborne = reducedMotion ? 0 : flying ? takeoff : settling ? 1 - settle : 0;
-  const reaction = reducedMotion ? 0 : clamp(bird.reaction);
-  const brake = reducedMotion ? 0 : clamp(bird.landing);
-  const glide = reducedMotion ? 0 : clamp(bird.glide);
-  const power = reducedMotion ? 0 : clamp(bird.wingPower);
-  const phase = reducedMotion ? 0 : bird.wingPhase;
+  // Ambient time and the rig are frozen together by updateAmbient when motion
+  // is reduced. Changing the preference must never snap an airborne bird into
+  // its standing silhouette, nor fold its wings when a flight is extended.
+  const takeoff = flying ? smooth(bird.age / .42) : 0;
+  const airborne = flying ? takeoff : settling ? 1 - settle : 0;
+  const reaction = clamp(bird.reaction);
+  const brake = clamp(bird.landing);
+  const glide = clamp(bird.glide);
+  const power = clamp(bird.wingPower);
+  const phase = bird.wingPhase;
   const pulse = Math.sin(Math.PI * clamp(bird.idleProgress));
-  const peck = !reducedMotion && bird.idleAction === 'peck' ? pulse * pulse : 0;
-  const preen = !reducedMotion && bird.idleAction === 'preen' ? pulse * pulse : 0;
-  const look = !reducedMotion && bird.idleAction === 'look'
+  const peck = bird.idleAction === 'peck' ? pulse * pulse : 0;
+  const preen = bird.idleAction === 'preen' ? pulse * pulse : 0;
+  const look = bird.idleAction === 'look'
     ? Math.sin(TAU * bird.idleProgress) * Math.sin(Math.PI * bird.idleProgress) : 0;
   const preparation = smooth((reaction - .48) / .52);
   const opening = clamp(airborne + (1 - airborne) * preparation * .58);
@@ -55,9 +68,10 @@ export function sampleBirdPose(bird: AmbientBird, time: number, reducedMotion = 
   // reach it. The same open wings fold after contact instead of changing sprite.
   const flap = (offset: number) => mix(strokeLift(phase + offset) * (1 - glide * .82),
     .57 + strokeLift(phase + offset) * .3, brake);
-  const breath = reducedMotion ? 0 : Math.sin(time * 1.55 + bird.wingOffset) * .17;
+  const breath = Math.sin(time * 1.55 + bird.wingOffset) * .17;
   const blinkCycle = (time + bird.wingOffset * 1.8) % 6.8;
-  const blink = reducedMotion || blinkCycle < 6.55 ? 0 : Math.sin((blinkCycle - 6.55) / .25 * Math.PI);
+  const blink = blinkCycle < 6.55 ? 0 : Math.sin((blinkCycle - 6.55) / .25 * Math.PI);
+  const fold = (offset: number) => recoveryFold(phase + offset) * (1 - glide) * (1 - brake * .85) * opening;
   return {
     airborne, opening, brake, glide,
     crouch: (preparation * 2.8 - Math.sin(reaction * Math.PI) * .8) * (1 - airborne)
@@ -67,6 +81,7 @@ export function sampleBirdPose(bird: AmbientBird, time: number, reducedMotion = 
     bodyBob: breath * (1 - airborne) + Math.sin(phase - .4) * .55 * power * airborne * (1 - brake),
     prone: airborne * (1 - brake * .65),
     wingLift: flap(0), wristLift: flap(-.36), farLift: flap(.22),
+    wingFold: fold(0), farFold: fold(.22), bank: clamp(bird.bank ?? 0, -1, 1) * airborne,
     tail: Math.sin(phase - .9) * .045 * airborne * power + breath * .08,
     peck, preen, look, blink,
     turn: clamp(Number.isFinite(bird.turn) ? bird.turn : bird.facing, -1, 1),
@@ -82,7 +97,6 @@ export function drawAnimatedBird(
   time: number,
   options: { ink: string; background: string; pixelScale: number; sizeScale: number; reducedMotion?: boolean },
 ) {
-  if (bird.phase === 'away') return;
   const pose = sampleBirdPose(bird, time, !!options.reducedMotion);
   const scale = bird.size * options.sizeScale;
   // A turn passes through a round frontal pose: the torso keeps its volume,
@@ -116,13 +130,15 @@ export function drawAnimatedBird(
     const open = pose.opening;
     const lift = far ? pose.farLift : pose.wingLift;
     const wristLift = far ? mix(pose.wristLift, pose.farLift, .5) : pose.wristLift;
-    const small = far ? .84 : 1;
+    const fold = far ? pose.farFold : pose.wingFold;
+    const bank = pose.bank * (far ? -1 : 1);
+    const small = (far ? .84 : 1) * (1 + bank * .1);
     const root = point(far ? .3 : -3.5, far ? -20.5 : -19);
     const brakeLift = pose.brake * 12;
-    const elbow = point(mix(-4, -7 - pose.glide * 3, open), mix(3.8, -lift * 13 - brakeLift * .45, open));
-    const wrist = point(mix(-8, -13 - pose.glide * 8, open), mix(5.7, -wristLift * 22 - brakeLift, open));
-    const tip = point(mix(-10, -21 - pose.glide * 11, open), mix(5.9, -wristLift * 27 - brakeLift, open));
-    const feather = 1.2 + open * 2.7;
+    const elbow = point(mix(-4, -7 - pose.glide * 3 + fold * 2.2, open), mix(3.8, -lift * 13 - brakeLift * .45 + bank * 3, open));
+    const wrist = point(mix(-8, (-13 - pose.glide * 8) * (1 - fold * .44), open), mix(5.7, -wristLift * (22 - fold * 5) - brakeLift + bank * 5, open));
+    const tip = point(mix(-10, (-21 - pose.glide * 11) * (1 - fold * .38), open), mix(5.9, -wristLift * (27 - fold * 6) - brakeLift + bank * 7, open));
+    const feather = 1.2 + open * 2.7 * (1 - fold * .45) + pose.brake * 1.3;
     const w = (x: number, y: number) => body(point(root.x + x * small, root.y + y * small));
     ctx.save();
     ctx.globalAlpha = far ? .64 * open * side : side;
@@ -149,11 +165,16 @@ export function drawAnimatedBird(
   const prone = pose.prone;
   const headCenter = point((5.8 + prone * 5.7 + pose.peck * 3.2 - pose.preen * 2.2 + pose.look) * side,
     -28.3 + prone * 6.9 + pose.peck * 13.2 + pose.preen * 2.4 - pose.look * .6);
-  const headAngle = pose.peck * .56 + pose.preen * 1.72 + pose.look * .12;
+  const headAngle = pose.peck * .56 + pose.preen * 1.72 + pose.look * .12
+    + pose.bodyPitch * (1 - pose.airborne * .78);
   const hc = Math.cos(headAngle), hs = Math.sin(headAngle);
+  const headOrigin = body(headCenter);
   const h = (x: number, y: number) => {
     const projection = x > 6.7 ? mix(6.7, x, side) : x;
-    return body(point(headCenter.x + projection * hc - y * hs, headCenter.y + projection * hs + y * hc));
+    // The neck absorbs most of the torso's pitch and wing recoil. The gaze
+    // stays level through a climb instead of the entire bird rotating rigidly.
+    return point(headOrigin.x + (projection * hc - y * hs) * turnWidth,
+      headOrigin.y + projection * hs + y * hc - pose.bodyBob * .6 * pose.airborne);
   };
   const tailAngle = pose.tail - pose.brake * .14;
   const tailFan = pose.brake * 3.8;

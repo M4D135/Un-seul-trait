@@ -2,6 +2,7 @@ import { drawCartoonCharacter, getCharacterGroundSpan } from './cartoon-characte
 import type { CompanionActing } from './companion';
 import { getAvailableDrawing, getDrawingPlan, getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
 import { stabilizePlayerStroke } from './platform-drawing';
+import { drawMechanismBody, drawMechanismTrack } from './platform-mechanism-art';
 
 export const PLATFORM_PALETTES = {
   blue: { background: '#064b8e', ink: '#fffdf6', accent: '#f6d89a' },
@@ -186,16 +187,11 @@ export function drawPlatformScene(
   ctx.save(); ctx.translate(-options.cameraX,0);
   ctx.lineCap='round';ctx.lineJoin='round';
 
-  // Rails use the same simulated positions and handle offsets as interaction.
+  // Fixed rails, sockets and stops stay anchored while each real collider moves.
   for(const view of mechanisms) {
-    const {mechanism,position,handle,held}=view;
-    if(Math.max(mechanism.from.x,mechanism.to.x)<options.cameraX-100||Math.min(mechanism.from.x,mechanism.to.x)>options.cameraX+options.viewWidth+100)continue;
-    const offset={x:handle.x-position.x,y:handle.y-position.y};
-    ctx.save();ctx.strokeStyle=palette.accent;ctx.lineWidth=1.6;ctx.globalAlpha=held?.65:.28;ctx.setLineDash([2,7]);
-    ctx.beginPath();ctx.moveTo(mechanism.from.x+offset.x,mechanism.from.y+offset.y);
-    ctx.lineTo(mechanism.to.x+offset.x,mechanism.to.y+offset.y);ctx.stroke();ctx.setLineDash([]);
-    for(const end of [mechanism.from,mechanism.to]){ctx.beginPath();ctx.arc(end.x+offset.x,end.y+offset.y,3.5,0,TAU);ctx.stroke();}
-    ctx.restore();
+    const {mechanism}=view,margin=mechanism.width/2+45;
+    if(Math.max(mechanism.from.x,mechanism.to.x)<options.cameraX-margin||Math.min(mechanism.from.x,mechanism.to.x)>options.cameraX+options.viewWidth+margin)continue;
+    drawMechanismTrack(ctx,view,palette);
   }
 
   // The horizon is interrupted only at real gaps and at the figure's contour.
@@ -215,26 +211,14 @@ export function drawPlatformScene(
   }
   ctx.stroke();
 
-  // A lowered gate is a fold in the ground; a raised gate has a closed base.
-  for(const {mechanism,position} of mechanisms)if(mechanism.type==='gate') {
-    const half=mechanism.width/2,top=position.y-mechanism.height;
-    const seated=surfaces.some(({a,b})=>Math.abs(b.x-a.x)>.01&&position.x>=Math.min(a.x,b.x)&&position.x<=Math.max(a.x,b.x)
+  // The platform top remains part of the line; rigging sits underneath it.
+  // A seated gate is still a fold in that line, and closes its base when raised.
+  for(const view of mechanisms) {
+    const {mechanism,position}=view,margin=mechanism.width/2+45;
+    if(position.x<options.cameraX-margin||position.x>options.cameraX+options.viewWidth+margin)continue;
+    const seated=mechanism.type==='gate'&&surfaces.some(({a,b})=>Math.abs(b.x-a.x)>.01&&position.x>=Math.min(a.x,b.x)&&position.x<=Math.max(a.x,b.x)
       &&Math.abs(a.y+(b.y-a.y)*(position.x-a.x)/(b.x-a.x)-position.y)<.2);
-    ctx.fillStyle=palette.background;ctx.strokeStyle=palette.ink;ctx.lineWidth=STROKE;
-    if(mechanism.appearance==='press'){
-      const support=Math.min(mechanism.from.y,mechanism.to.y)-mechanism.height-22;
-      ctx.save();ctx.lineWidth=2;ctx.globalAlpha=.55;
-      ctx.beginPath();ctx.moveTo(position.x-half-10,support);ctx.lineTo(position.x+half+10,support);
-      ctx.moveTo(position.x-5,support);ctx.lineTo(position.x-5,top);
-      ctx.moveTo(position.x+5,support);ctx.lineTo(position.x+5,top);ctx.stroke();ctx.restore();
-    }
-    ctx.beginPath();ctx.moveTo(position.x-half,position.y);ctx.lineTo(position.x-half,top);
-    ctx.lineTo(position.x+half,top);ctx.lineTo(position.x+half,position.y);if(!seated)ctx.closePath();ctx.fill();ctx.stroke();
-    if(mechanism.appearance==='press'){
-      ctx.save();ctx.globalAlpha=.6;ctx.lineWidth=1.8;ctx.beginPath();
-      for(let x=position.x-half+7;x<position.x+half-3;x+=13){ctx.moveTo(x,top+5);ctx.lineTo(x+6,top+12);}
-      ctx.stroke();ctx.restore();
-    }
+    drawMechanismBody(ctx,view,palette,seated);
   }
 
   // Undrawn structures remain absent; a discreet pencil marker calls the hand.

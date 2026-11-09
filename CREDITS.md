@@ -1,4 +1,4 @@
-# Crédits, médias et références — version 1.4.0
+# Crédits, médias et références — version 1.5.0
 
 ## L’œuvre de référence
 
@@ -56,6 +56,10 @@ La piste originale est convertie de stéréo en mono, sans changement de vitesse
 Le choix combine un sac mélangé par situation et une mémoire des **cinq dernières prises**, même après une pause. Une seule réaction parle à la fois. Les échanges comportent des répliques séparées par des pauses; la bouche suit l’amplitude mesurée du fragment réellement lu. La banque a été vérifiée par ses formats, durées, signaux et contextes gestuels visibles. **Aucune validation à l’écoute ni traduction émotionnelle certaine n’est revendiquée.**
 
 **Extraits originaux** reste le mode par défaut. Les options **Grammelot synthétique** et **Italien synthétique** sont distinctes : ce ne sont pas des enregistrements de Carlo Bonomi. La seconde utilise les voix déjà installées sur l’appareil. Les pas, le crayon et les sons de jeu sont des effets locaux séparés.
+
+## Bruitages locaux de la version 1.5.0
+
+Les textures de pas, ailes, pépiements, frottements, butées et verrouillages sont synthétisées localement en PCM par `lib/trait/foley.ts`. Elles ne sont pas extraites du dessin animé ni présentées comme des enregistrements réels. Leur variation dépend des gestes et du déplacement des objets ; l’audibilité dépend du cadre et de la distance. Les tests vérifient leurs niveaux, fins silencieuses et interruptions ; aucune appréciation issue d’une écoute humaine n’est revendiquée.
 
 ## Dessins et adaptation interactive
 

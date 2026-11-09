@@ -2,13 +2,13 @@
 
 **Dessine le passage. Attrape le décor. Avance avec un petit personnage qui a son caractère.**
 
-Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.4.0** ajoute des choix de parcours, un dessin reprenable et des oiseaux articulés au rythme plus calme. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et mécanismes à déplacer à la main.
+Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.5.0** corrige les disparitions des oiseaux dans le champ, affine leur vol, ajoute des bruitages liés aux mouvements et retravaille les mécanismes du parcours. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et mécanismes à déplacer à la main.
 
 **Projet de fan non officiel.** Le personnage est redessiné en contours vectoriels; la main est une image générée au rendu photographique. La voix utilise 16 très courts fragments originaux. Les origines exactes, traitements et limites sont dans [CREDITS.md](CREDITS.md).
 
 ## Jouer sans compiler
 
-Télécharge **Un-seul-trait-1.4.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger.
+Télécharge **Un-seul-trait-1.5.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger.
 
 ## Un geste pour dessiner, un geste pour déplacer
 
@@ -20,7 +20,7 @@ Tu peux redessiner un passage déjà construit. L’ancien pont reste praticable
 
 Pour refaire un passage dont l’autre ancre est hors champ, utilise le petit crayon contextuel **Redessiner** : il cadre les deux points avant le geste. **E** reste un raccourci facultatif pour ouvrir le dessin.
 
-Attrape directement les **poignées dorées** et fais-les glisser : porte, presse, roue, plateforme ou ascenseur. Relâcher arrête le déplacement. Il n’y a plus de bouton qui déplace automatiquement un mécanisme à l’autre bout. Monte sur un plateau puis entraîne sa poignée pour transporter le personnage. Tu peux marcher pendant que l’autre doigt tient un objet.
+Attrape directement les **poignées dorées** et fais-les glisser : porte, volet oblique, presse, roue, pont coulissant ou ascenseur. Relâcher arrête le déplacement. Il n’y a plus de bouton qui déplace automatiquement un mécanisme à l’autre bout. Monte sur un plateau puis entraîne sa poignée pour transporter le personnage. Tu peux marcher pendant que l’autre doigt tient un objet.
 
 ## Commandes intégrées
 
@@ -49,13 +49,17 @@ Dix-huit passages sont dessinés par le joueur. **Neuf de ces passages proposent
 | Presse du raccourci | La soulever pour suivre le trajet court, ou dessiner une arche au-dessus |
 | Étoile en hauteur | Construire le détour qui la rejoint, ou prendre le raccourci inférieur |
 
-Ces choix modifient réellement le terrain, les manipulations nécessaires ou les étoiles accessibles. Les scies et les piques occupent des obstacles distincts ; les presses restent lisibles à côté des dangers mobiles. Les passeurs et ascenseurs transportent les pieds du personnage, toujours sans saut.
+Ces choix modifient réellement le terrain, les manipulations nécessaires ou les étoiles accessibles. Les scies et les piques occupent des obstacles distincts ; les presses restent lisibles à côté des dangers mobiles. Le pont coulissant du chapitre 2 se déploie depuis sa rive ; on peut le préparer puis marcher dessus. Le volet du chapitre 5 se dégage le long d’une glissière oblique. Les ascenseurs transportent les pieds du personnage. Rails, roues, poulies et contrepoids suivent la position physique réelle, toujours sans saut.
 
 ## Un décor animé qui laisse respirer le jeu
 
-Les oiseaux partagent une même silhouette articulée au sol et en vol. Ils observent, préparent le décollage, battent des ailes puis suivent des courbes avec accélération et freinage. Avant de se poser, ils relèvent les ailes, ouvrent la queue et tendent les pattes ; le corps amortit le contact avant de replier les ailes. Ils tournent la tête, clignent des yeux, picorent ou lissent leurs plumes pendant de longues pauses.
+Les oiseaux partagent une même silhouette articulée au sol et en vol. Ils observent, préparent le décollage, battent des ailes puis suivent des courbes avec accélération et freinage. Les ailes se replient pendant leur retour et s’étendent pour pousser ou planer ; la tête absorbe une partie de l’inclinaison du corps. Avant de se poser, ils relèvent les ailes, ouvrent la queue et tendent les pattes ; le corps amortit le contact avant de replier les ailes. Ils tournent la tête, clignent des yeux, picorent ou lissent leurs plumes pendant de longues pauses.
+
+Les oiseaux restent dessinés tant que leur silhouette traverse le cadre. Une sortie est calculée avec les quatre bords réellement visibles, y compris dans les grands écrans portrait ; un vol est prolongé si la caméra le suit. Un retour part de la vraie position atteinte hors champ. Le rendu ne masque plus un oiseau parce que trois autres sont déjà visibles.
 
 Les départs volontaires sont espacés et limités dans une même zone. Les oiseaux hors champ ne lancent pas de nouveaux vols décoratifs, et les trajets sont vérifiés contre les surfaces et les dangers. L’approche du personnage ou un toucher peut déclencher leur fuite. Les animations décoratives n’interviennent pas dans les collisions du personnage.
+
+Les pas, battements d’ailes et frottements utilisent des textures locales variées. Les petits appels des oiseaux sont espacés et liés à une réaction. Une poignée produit un frottement quand elle se déplace, puis un impact amorti en butée. L’intensité dépend de la proximité et les sons de décor s’arrêtent hors cadre ou en pause. Les voix originales restent distinctes de ces bruitages.
 
 Le personnage regarde le problème, appelle le dessinateur, montre le passage et proteste par petites séquences variées. Les gestes cèdent immédiatement à la marche, à la flexion et aux chutes. Les 16 réactions originales sont choisies par contexte sans répéter les cinq dernières prises; la bouche suit le son effectivement lu.
 
@@ -93,12 +97,13 @@ Le build génère `dist/index.html` et `dist/offline-play.html`. Aucun compte, c
 | `lib/trait/cartoon-character.ts` / `companion.ts` | Silhouettes et petites scènes gestuelles |
 | `lib/trait/ambient-life.ts` / `ambient-bird-renderer.ts` | Comportements, trajectoires et silhouettes articulées des oiseaux |
 | `lib/trait/audio.ts` / `original-media.ts` | Voix originales, sélection et synchronisation de la bouche |
+| `lib/trait/foley.ts` | Bruitages locaux, cycles d’ailes, distance et déplacement des mécanismes |
 | `lib/trait/hand.ts` | Main photographique ancrée au crayon |
 | `lib/trait/controls.ts` / `progress.ts` | Configuration et sauvegardes |
 | `public/*-manifest.json` | Provenance des médias et définition réelle de la main |
 
-Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Les contrôles ajoutés pour les chemins vérifient la reprise du trait dans les deux sens, l’annulation partielle, le respect de l’encre et les conséquences physiques de chaque variante. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile.
+Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Les contrôles des oiseaux suivent leur présence jusqu’à la sortie complète, les retours, la caméra, le portrait et les changements de préférence. Les contrôles audio vérifient les signaux, le silence au repos et les interruptions. Les contrôles ajoutés pour les chemins vérifient la reprise du trait dans les deux sens, l’annulation partielle, le respect de l’encre et les conséquences physiques de chaque variante. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile.
 
-Le workflow **Vérification du jeu** contrôle les types, les tests et le build. Le workflow **Publication linea.estrasse.fr** met le site en ligne sur https://linea.estrasse.fr à chaque push sur `main` : voir [deploy/README.md](deploy/README.md).
+Le workflow **Vérification du jeu** contrôle les types, les tests et le build. Le workflow **Publication linea.estrasse.fr** compile et publie la branche `site` à chaque push sur `main`. Le service de mise à jour du serveur récupère ensuite cette branche pour https://linea.estrasse.fr : voir [deploy/README.md](deploy/README.md).
 
 Les détails de compilation figurent dans [BUILD.md](docs/BUILD.md); les références artistiques et les notices dans [CREDITS.md](CREDITS.md), [MOVEMENTS.md](docs/MOVEMENTS.md) et [THIRD-PARTY-NOTICES.md](docs/THIRD-PARTY-NOTICES.md).

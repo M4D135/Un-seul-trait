@@ -18,13 +18,13 @@
     },
     {
       "path": "CREDITS.md",
-      "bytes": 6337,
-      "sha256": "0a5224b3e1cf89773f5b162bc284f3ce60a0330d66112a925da83c0658a3f87c"
+      "bytes": 6881,
+      "sha256": "baa000a4e26aa9978aa86fb05069376eafcb7dc3c4493bdeafe0122a4632b56e"
     },
     {
       "path": "README.md",
-      "bytes": 9364,
-      "sha256": "2907adc64796dd7a840d0df799b1d7a192ce342c17d1bfcd63ec97c504b20f5d"
+      "bytes": 11028,
+      "sha256": "221b2f09856220d8bf8b2cbaa822f5de9a56b6b7a8ac2c322c1abcd47ce7784e"
     },
     {
       "path": "app/globals.css",
@@ -33,8 +33,8 @@
     },
     {
       "path": "app/page.tsx",
-      "bytes": 49669,
-      "sha256": "9876efd07d5a9bd5c950de0b9ea9c86e65a07b1dbe6575265ce61f0d0d924217"
+      "bytes": 50690,
+      "sha256": "7fccfc5fa96e616fdf2324652a7bcc83d97c8ebc50be84ee9be59f331e511ce7"
     },
     {
       "path": "components/trait/controls-config.module.css",
@@ -53,13 +53,13 @@
     },
     {
       "path": "docs/BUILD.md",
-      "bytes": 9373,
-      "sha256": "a895893696d55e6df28e593686a8050bdf0d6e13033a1c8a425402d7ca242c07"
+      "bytes": 10138,
+      "sha256": "5143534776ca5a057903531d1b9582e763b0618e5e46a60ec1f5f63dd387ba88"
     },
     {
       "path": "docs/MOVEMENTS.md",
-      "bytes": 10051,
-      "sha256": "45d4e4bcc926fe05b6bd88af0fa02a4fff41d8d83504f2a4064eb4af7f40c774"
+      "bytes": 11460,
+      "sha256": "b60c3b82cacaf9a80fb0b8c7be5af7d8ad578bb15e79e405329f6f71cc6e2164"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -68,18 +68,18 @@
     },
     {
       "path": "lib/trait/ambient-bird-renderer.ts",
-      "bytes": 10730,
-      "sha256": "4583b181cc52c3abcd1c7b310b17c6f2a469a9b56d1a295efde40f4f3b0a014e"
+      "bytes": 11795,
+      "sha256": "3b5849f4afcfba61b7955c7607945d18631edf6864c8e6500626ef92359842c6"
     },
     {
       "path": "lib/trait/ambient-life.ts",
-      "bytes": 25834,
-      "sha256": "ae5d3a2a396749b7069b73ae9bea7cf79e787faff4722fb7f6ff347599935974"
+      "bytes": 31074,
+      "sha256": "36498ee85fe7bfb25202f0478d30665a264bef06635bfc2b2883908bf322da4c"
     },
     {
       "path": "lib/trait/audio.ts",
-      "bytes": 32033,
-      "sha256": "6e4f68f5105e696aeea8ce73e7caa640fc9867d0c28d20ae998a59130f9dea71"
+      "bytes": 35853,
+      "sha256": "52428b4ed7b46f5c2cedf08e83c9f1c09dfd5b94baad4803b64514b9e49f20f9"
     },
     {
       "path": "lib/trait/camera.ts",
@@ -102,6 +102,11 @@
       "sha256": "5dce7de66e3c2375d5b84e9a3ba99efbe8bfd1a0a4bccf0a7187fe4896a11c3d"
     },
     {
+      "path": "lib/trait/foley.ts",
+      "bytes": 14431,
+      "sha256": "75a2e970628a0d8b12833c35b32cc3a1f94034fc31f4d2ec1103febaf5a5fb15"
+    },
+    {
       "path": "lib/trait/hand.ts",
       "bytes": 4021,
       "sha256": "24321127056fb43554c88ef11626e906d3538f70389102c00757ba1d79df5eca"
@@ -118,8 +123,13 @@
     },
     {
       "path": "lib/trait/platform-levels.ts",
-      "bytes": 28519,
-      "sha256": "09608fe266f2d033f7cfc8b3726043cbaf792ca735c8f46fdae328c0f535bec7"
+      "bytes": 29823,
+      "sha256": "ec21f93ade3b2ff73464528d18e7da38c71eded241bfc58f67f2e3fdcfe718ec"
+    },
+    {
+      "path": "lib/trait/platform-mechanism-art.ts",
+      "bytes": 9513,
+      "sha256": "aa26d01c5833ea238bbf2bf0c0a3237796fe4c7c9fdcac3de51e7b671a06fd6f"
     },
     {
       "path": "lib/trait/platform-mechanisms.ts",
@@ -128,8 +138,8 @@
     },
     {
       "path": "lib/trait/platform-renderer.ts",
-      "bytes": 21798,
-      "sha256": "c464ed43b0a6ea48194598b3523e10328a439485d24d85e2e8ff467261605a65"
+      "bytes": 20624,
+      "sha256": "62991911c08f69d87f65a6481a2e047cd5e65f5bfaecefa258bf834c6eb674db"
     },
     {
       "path": "lib/trait/platformer.ts",
@@ -149,12 +159,12 @@
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "2a5f80543ffd7b6766e9216afcf27f6a4a8f3c9a9b1484fba77a484b2007ec6d"
+      "sha256": "2c8805ec4050407a91411f7cfb3493147994a5037c24da1640e2fa00069c2645"
     },
     {
       "path": "package.json",
       "bytes": 949,
-      "sha256": "4ddfdf06179a019831076fb8bdcbcc24750b1b62ad5db31955a760fe83dc6669"
+      "sha256": "161c8c2bea8b70ca46db60a4eba6bbdb99b4bb995b5998235b5cf30e70b727fa"
     },
     {
       "path": "public/drawing-hand-hd-manifest.json",
@@ -208,8 +218,13 @@
     },
     {
       "path": "tests/ambient-life.test.ts",
-      "bytes": 15389,
-      "sha256": "ed39ccadd62367af4fd058ccd6dd48857fd3ed6d0a3509a31c2b053368ac1d67"
+      "bytes": 23596,
+      "sha256": "83196c6fe50aa874e8d514765f464661d992485dfff9067afa9f6827b894c9db"
+    },
+    {
+      "path": "tests/bird-pose.test.ts",
+      "bytes": 2399,
+      "sha256": "3c84f24845ac3151afc5fc431d5edfe3e8e7b64665e28d898fb2dfc5ac55deb7"
     },
     {
       "path": "tests/camera.test.ts",
@@ -237,6 +252,11 @@
       "sha256": "f3571b05927cdd744fafa261cd4ba5c8bf9cca3467620ea309481e3c00f1f58d"
     },
     {
+      "path": "tests/foley.test.ts",
+      "bytes": 13587,
+      "sha256": "bb2e4c3d6d964d8ec682bc44a7672a07e0a94dcfee17335b252ea1eb2b39308c"
+    },
+    {
       "path": "tests/hand.test.ts",
       "bytes": 4805,
       "sha256": "55cf536dd88d0f7713e6211a8613a8baa8f658832184b4672473065016a01f04"
@@ -247,9 +267,14 @@
       "sha256": "1b173e51d83d025a23809b5423e1d3952894bf10c2f9c5a7225f20edcf2b0aa6"
     },
     {
+      "path": "tests/platform-mechanism-art.test.ts",
+      "bytes": 2834,
+      "sha256": "e8e75ba3f0871a2ece7553aa8d14ca1544002195c8632e225f3f69cf93122d1e"
+    },
+    {
       "path": "tests/platform-mechanisms.test.ts",
-      "bytes": 21242,
-      "sha256": "53ce17b99a4a93c13272a22052361748aeeabfc95b0edbc4e3b008e431d09a01"
+      "bytes": 26633,
+      "sha256": "e8ecc944868888ca1253775f9677feec55fb01b8cd2c526dae78b4b5dd634fa8"
     },
     {
       "path": "tests/progress.test.ts",

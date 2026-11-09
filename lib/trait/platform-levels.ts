@@ -198,8 +198,36 @@ function cooperativeCourse(source: PlatformLevel): PlatformLevel {
   makeWalkingRoute(level);
   addDistinctObstacles(level);
   addDrawingChoices(level);
+  refineMechanicalPassages(level);
   level.checkpoints.sort((a, b) => a.x - b.x);
   return level;
+}
+
+/** Existing handles retain their IDs and open/closed save values. These two
+ * passages now ask for different physical gestures, with a safe bank to plan
+ * from: extend a bridge before walking, then slide a shutter out of the way.
+ * No drawn route or checkpoint moves when an older adventure is restored.
+ */
+function refineMechanicalPassages(level: PlatformLevel): void {
+  if (level.id === 2) {
+    const bridge = level.mechanisms!.find(m => m.id === 'passeur-des-dents')!;
+    Object.assign(bridge, {
+      title: 'Le pont coulissant',
+      prompt: 'Tire la poignée vers la droite jusqu’à la butée : le pont rejoint l’autre rive.',
+      to: p(1927.5, 430), width: 360,
+    });
+    level.subtitle = 'Dégage la roue, déploie le pont coulissant et règle la hauteur de la presse.';
+  }
+  if (level.id === 5) {
+    const shutter = level.mechanisms!.find(m => m.id === 'porte-du-balcon');
+    if (shutter?.type === 'gate') {
+      shutter.appearance = 'door';
+      shutter.title = 'Le volet sur glissière';
+      shutter.prompt = 'Fais glisser la poignée vers le haut à droite pour libérer le passage.';
+      shutter.to = p(3620, 165);
+    }
+    level.subtitle = 'Entre deux balcons, choisis ton tracé puis ouvre le volet sur sa glissière.';
+  }
 }
 
 /** Four short changes of floor, each joined by a hand-driven vertical lift.

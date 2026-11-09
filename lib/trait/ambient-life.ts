@@ -2,11 +2,22 @@ import { getMechanismPosition, type GameWorld, type PlatformLevel, type Platform
 import { drawAnimatedBird } from './ambient-bird-renderer';
 
 export type AmbientPerch = PlatformPoint & { surface: number };
+/** Actual canvas rectangle in world coordinates, after camera and letterboxing. */
+export type AmbientViewport = {
+  cameraX: number;
+  viewWidth: number;
+  top: number;
+  bottom: number;
+  /** CSS pixels per world unit, the same scale used by drawAmbient. */
+  pixelScale: number;
+};
 export type AmbientBird = {
   id: number;
   /** Foot datum, shared by the ground and airborne poses. */
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   facing: -1 | 1;
   /** Continuous side projection during the preparatory turn, never a mirror cut. */
   turn: number;
@@ -36,6 +47,7 @@ export type AmbientBird = {
     elapsed: number; duration: number; destination: number | null;
     length: number; progress: number; returning: boolean;
     acceleration: number; deceleration: number; cruiseSpeed: number;
+    startSpeed: number;
     arcLengths: number[];
   } | null;
 };
@@ -54,6 +66,7 @@ export type AmbientState = {
   birds: AmbientBird[];
   motes: AmbientMote[];
   reducedMotion: boolean;
+  viewport: AmbientViewport | null;
 };
 
 export type AmbientInput = {
@@ -62,7 +75,7 @@ export type AmbientInput = {
   touched?: boolean;
   reducedMotion?: boolean;
   /** Limits voluntary activity to the shot; an existing flight still finishes. */
-  viewport?: { cameraX: number; viewWidth: number };
+  viewport?: AmbientViewport;
 };
 
 export const AMBIENT_MOTION = {
@@ -80,6 +93,25 @@ const smooth = (u: number) => { const t = clamp(u, 0, 1); return t * t * (3 - 2 
 const smoother = (u: number) => { const t = clamp(u, 0, 1); return t * t * t * (t * (t * 6 - 15) + 10); };
 const TAU = Math.PI * 2;
 const ARC_STEPS = 128;
+
+function validViewport(viewport?: AmbientViewport): viewport is AmbientViewport {
+  return !!viewport && [viewport.cameraX, viewport.viewWidth, viewport.top, viewport.bottom, viewport.pixelScale].every(Number.isFinite)
+    && viewport.viewWidth > 0 && viewport.bottom > viewport.top && viewport.pixelScale > 0;
+}
+
+function birdRadius(bird: AmbientBird, pixelScale: number) {
+  const scale = Math.max(.15, pixelScale);
+  const readable = Math.min(1.55, Math.max(1, .72 / scale));
+  // Conservative envelope of every wing/neck/tail pose, plus the round stroke.
+  // The readability enlargement on a phone is part of the silhouette too.
+  return 96 * bird.size * readable + 6 / scale;
+}
+
+function inViewport(bird: AmbientBird, viewport: AmbientViewport, extra = 0) {
+  const radius = birdRadius(bird, viewport.pixelScale) + extra;
+  return bird.x + radius >= viewport.cameraX && bird.x - radius <= viewport.cameraX + viewport.viewWidth
+    && bird.y + radius >= viewport.top && bird.y - radius <= viewport.bottom;
+}
 
 function random(state: Pick<AmbientState, 'seed'>): number {
   let value = state.seed | 0;
@@ -162,7 +194,7 @@ function restDuration(state: AmbientState) {
 export function createAmbientState(level: PlatformLevel): AmbientState {
   const state: AmbientState = {
     levelId: level.id, time: 0, seed: ((level.id * 2654435761) ^ Math.round(level.width * 97)) >>> 0 || 1,
-    perches: [], birds: [], motes: [], reducedMotion: false,
+    perches: [], birds: [], motes: [], reducedMotion: false, viewport: null,
   };
   state.perches = perchCandidates(level, state);
   const count = Math.min(8, Math.ceil(state.perches.length * .28));
@@ -171,7 +203,7 @@ export function createAmbientState(level: PlatformLevel): AmbientState {
     const point = state.perches[perch], facing = random(state) < .5 ? -1 : 1;
     const wingOffset = random(state) * TAU;
     state.birds.push({
-      id: i, x: point.x, y: point.y, perch, facing, turn: facing, turnFrom: facing,
+      id: i, x: point.x, y: point.y, vx: 0, vy: 0, perch, facing, turn: facing, turnFrom: facing,
       size: .72 + random(state) * .12, phase: 'perched', age: 0, wait: restDuration(state),
       wingOffset, wingPhase: wingOffset, wingPower: 0, glide: 0, pitch: 0, bank: 0,
       reaction: 0, landing: 0, idleAction: 'rest', idleProgress: 0, idleAge: 0, idleDuration: 1,
@@ -206,8 +238,10 @@ function tangent(flight: BirdFlight, u: number): PlatformPoint {
   };
 }
 
-function prepareFlight(from: PlatformPoint, to: PlatformPoint, destination: number | null, arc: number, returning = false): BirdFlight {
+function prepareFlight(from: PlatformPoint, to: PlatformPoint, destination: number | null, arc: number, returning = false,
+  velocity?: PlatformPoint): BirdFlight {
   const dx = to.x - from.x, high = Math.min(from.y, to.y);
+  const startSpeed = velocity ? Math.min(AMBIENT_MOTION.maxSpeed, Math.hypot(velocity.x, velocity.y)) : 0;
   const flight: BirdFlight = {
     from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y },
     controlA: returning ? { x: from.x + dx * .38, y: from.y + 25 }
@@ -215,9 +249,19 @@ function prepareFlight(from: PlatformPoint, to: PlatformPoint, destination: numb
     controlB: returning ? { x: to.x - dx * .17, y: to.y - Math.max(95, arc * .6) }
       : { x: from.x + dx * .79, y: high - arc * .68 },
     elapsed: 0, duration: 0, destination, length: 0, progress: 0, returning,
-    acceleration: returning ? .9 : .55, deceleration: destination === null ? .8 : 1.2,
-    cruiseSpeed: AMBIENT_MOTION.maxSpeed, arcLengths: [0],
+    acceleration: returning ? .9 : .55, deceleration: destination === null ? 0 : 1.2,
+    cruiseSpeed: AMBIENT_MOTION.maxSpeed, startSpeed, arcLengths: [0],
   };
+  if (destination === null) {
+    // Exit tangents point out of the frame. The old curve first overshot its
+    // endpoint, turned back down and stopped in midair before being hidden.
+    flight.controlA = { x: from.x + dx * .09, y: from.y - Math.min(Math.max(190, Math.abs(to.y - from.y) * .65), 100 + arc) };
+    flight.controlB = { x: to.x - dx * .22, y: to.y + Math.min(180, Math.abs(to.y - from.y) * .24 + 40) };
+  }
+  if (velocity && startSpeed > .01) {
+    const reach = clamp(distance(from, to) * .2, 45, 130);
+    flight.controlA = { x: from.x + velocity.x / startSpeed * reach, y: from.y + velocity.y / startSpeed * reach };
+  }
   let previous = from;
   for (let i = 1; i <= ARC_STEPS; i++) {
     const point = curve(flight, i / ARC_STEPS);
@@ -227,18 +271,28 @@ function prepareFlight(from: PlatformPoint, to: PlatformPoint, destination: numb
   // give a prompt push-off, a calm cruise and a longer braking approach. A long
   // flight must not spend its first seconds floating beside the approaching hero.
   const ramps = (flight.acceleration + flight.deceleration) / 2;
-  flight.cruiseSpeed = Math.min(AMBIENT_MOTION.maxSpeed, flight.length / Math.max(.5, 3.6 - ramps));
-  flight.duration = flight.length / flight.cruiseSpeed + ramps;
+  flight.cruiseSpeed = startSpeed > 0 ? AMBIENT_MOTION.maxSpeed
+    : Math.min(AMBIENT_MOTION.maxSpeed, flight.length / Math.max(.5, 3.6 - ramps));
+  flight.duration = (flight.length - startSpeed * flight.acceleration / 2) / flight.cruiseSpeed + ramps;
   return flight;
 }
 
 function travelledDistance(flight: BirdFlight) {
-  const t = flight.elapsed, speed = flight.cruiseSpeed, a = flight.acceleration, d = flight.deceleration;
-  const rampDistance = (seconds: number, ramp: number) => speed * .5 * (seconds - ramp / Math.PI * Math.sin(Math.PI * seconds / ramp));
-  if (t < a) return rampDistance(t, a);
-  if (t <= flight.duration - d) return speed * (t - a / 2);
+  const t = flight.elapsed, speed = flight.cruiseSpeed, initial = flight.startSpeed, a = flight.acceleration, d = flight.deceleration;
+  const rampDistance = (seconds: number, ramp: number, amount = speed) => amount * .5 * (seconds - ramp / Math.PI * Math.sin(Math.PI * seconds / ramp));
+  if (t < a) return initial * t + rampDistance(t, a, speed - initial);
+  if (!d || t <= flight.duration - d) return speed * (t - a / 2) + initial * a / 2;
   const remaining = Math.max(0, flight.duration - t);
   return flight.length - rampDistance(remaining, d);
+}
+
+function flightSpeed(flight: BirdFlight) {
+  if (flight.elapsed < flight.acceleration) return mix(flight.startSpeed, flight.cruiseSpeed,
+    .5 - .5 * Math.cos(Math.PI * flight.elapsed / flight.acceleration));
+  if (flight.deceleration && flight.elapsed > flight.duration - flight.deceleration) {
+    return flight.cruiseSpeed * (.5 - .5 * Math.cos(Math.PI * Math.max(0, flight.duration - flight.elapsed) / flight.deceleration));
+  }
+  return flight.cruiseSpeed;
 }
 
 function curveParameter(flight: BirdFlight, progress: number) {
@@ -286,6 +340,30 @@ function freePerch(state: AmbientState, world: GameWorld, bird: AmbientBird, ind
     && (other.perch === index || other.flight?.destination === index));
 }
 
+function planExit(state: AmbientState, world: GameWorld, level: PlatformLevel, bird: AmbientBird, continuing = false): BirdFlight | null {
+  const direction = bird.escapeDirection, viewport = state.viewport;
+  const margin = viewport ? birdRadius(bird, viewport.pixelScale) + 32 / Math.max(.15, viewport.pixelScale) : 150;
+  const reach = 230 + ((bird.id * 37 + level.id * 19) % 95);
+  const top = viewport ? Math.min(viewport.top - margin, bird.y - 140) : bird.y - 450;
+  const side = viewport ? direction > 0 ? Math.max(viewport.cameraX + viewport.viewWidth + margin, bird.x + 180)
+    : Math.min(viewport.cameraX - margin, bird.x - 180) : bird.x + direction * 700;
+  const broadExits = [
+    { x: side, y: bird.y - 170 },
+    { x: bird.x + direction * reach, y: top },
+  ].sort((a, b) => distance(a, bird) - distance(b, bird));
+  const exits = [
+    ...broadExits,
+    { x: bird.x + direction * 100, y: top },
+    { x: bird.x + direction * 20, y: top },
+  ];
+  const velocity = continuing ? { x: bird.vx, y: bird.vy } : undefined;
+  for (const target of exits) for (const arc of [50, 155, 300]) {
+    const flight = prepareFlight(bird, target, null, arc, false, velocity);
+    if (clearFlight(flight, world, level)) return flight;
+  }
+  return null;
+}
+
 function planDeparture(state: AmbientState, world: GameWorld, level: PlatformLevel, bird: AmbientBird): BirdFlight | null {
   const direction = bird.escapeDirection;
   const candidates = state.perches.map((point, index) => ({ point, index }))
@@ -299,15 +377,9 @@ function planDeparture(state: AmbientState, world: GameWorld, level: PlatformLev
     const flight = prepareFlight(bird, point, index, baseArc + addedHeight);
     if (clearFlight(flight, world, level)) return flight;
   }
-  // When the local area is blocked, leave upward through a clear corridor.
-  // The endpoint is above the playable shot; it never vanishes halfway across it.
-  const reach = 230 + random(state) * 95, sky = -140 - random(state) * 50;
-  for (const dx of [reach, 180, 80, 20]) {
-    const target = { x: bird.x + direction * dx, y: sky };
-    const flight = prepareFlight(bird, target, null, 28);
-    if (clearFlight(flight, world, level)) return flight;
-  }
-  return null;
+  // The exit belongs to the actual shot, including its portrait height. If the
+  // camera follows or zooms out, this route will continue instead of hiding.
+  return planExit(state, world, level, bird);
 }
 
 function startAnticipation(bird: AmbientBird, direction: -1 | 1) {
@@ -315,41 +387,73 @@ function startAnticipation(bird: AmbientBird, direction: -1 | 1) {
   bird.phase = 'startled'; bird.age = 0; bird.reaction = 0; bird.idleAction = 'rest'; bird.idleProgress = 0;
 }
 
-function beginFlight(bird: AmbientBird, flight: BirdFlight) {
+function beginFlight(bird: AmbientBird, flight: BirdFlight, continuing = false) {
   bird.flight = flight; bird.facing = flight.to.x < flight.from.x ? -1 : 1;
-  bird.turn = bird.facing; bird.phase = 'flying'; bird.age = 0;
-  bird.glide = 0; bird.landing = 0; bird.idleAction = 'rest'; bird.idleProgress = 0;
+  bird.turn = bird.facing; bird.phase = 'flying';
+  if (!continuing) { bird.age = 0; bird.glide = 0; }
+  bird.landing = 0; bird.idleAction = 'rest'; bird.idleProgress = 0;
 }
 
-function fly(bird: AmbientBird, state: AmbientState, step: number) {
-  const flight = bird.flight!;
-  flight.elapsed = Math.min(flight.duration, flight.elapsed + step);
-  const timeProgress = flight.elapsed / flight.duration;
-  const progress = clamp(travelledDistance(flight) / flight.length, 0, 1);
-  flight.progress = progress;
-  const u = curveParameter(flight, progress), position = curve(flight, u), heading = tangent(flight, u);
-  bird.x = position.x; bird.y = position.y;
-  bird.landing = flight.destination === null ? 0 : smoother((progress - .72) / .28);
-  const launching = 1 - smooth(flight.elapsed / .8);
-  const glideWindow = smooth((progress - .22) / .12) * (1 - smooth((progress - .53) / .12));
-  bird.glide = glideWindow * .8 * (flight.length > 300 ? 1 : .35);
-  bird.wingPower = mix(.76, .3, bird.glide) + launching * .14 + bird.landing * .15;
-  bird.wingPhase += step * TAU * (3.15 + launching * .55 + bird.landing * .45 - bird.glide * 1.35);
-  bird.reaction = 1 - smooth(flight.elapsed / .42);
-  const pitchTarget = clamp(Math.atan2(heading.y, Math.abs(heading.x) || .01) * .28, -.35, .25) * (1 - bird.landing) - bird.landing * .2;
-  bird.pitch += (pitchTarget - bird.pitch) * (1 - Math.exp(-step * 9));
-  bird.bank = Math.sin(progress * Math.PI * 2) * .055 * (1 - bird.landing);
-  if (flight.destination !== null && progress > .72) bird.phase = 'landing';
-  if (timeProgress < 1) return;
-  bird.x = flight.to.x; bird.y = flight.to.y; bird.age = 0;
-  if (flight.destination === null) {
-    bird.phase = 'away'; bird.wait = 10 + random(state) * 9;
-    bird.wingPower = 0; bird.glide = 0; bird.reaction = 0; bird.landing = 0;
-  } else {
-    bird.phase = 'settling'; bird.perch = flight.destination; bird.landing = 1;
-    bird.wait = restDuration(state); bird.idleAge = 0; bird.nextIdle = 3 + random(state) * 4;
+function fly(bird: AmbientBird, state: AmbientState, world: GameWorld, level: PlatformLevel, step: number) {
+  if (!bird.flight) {
+    const continuation = planExit(state, world, level, bird, true);
+    if (!continuation) return;
+    beginFlight(bird, continuation, true);
   }
-  bird.flight = null;
+  // Retain any fraction of a frame when a visible exit has to be prolonged.
+  // This keeps both position and speed continuous at the join between curves.
+  let remaining = step;
+  for (let segment = 0; segment < 3 && bird.flight && remaining > 1e-9; segment++) {
+    const flight = bird.flight;
+    const used = Math.min(remaining, Math.max(0, flight.duration - flight.elapsed));
+    flight.elapsed = Math.min(flight.duration, flight.elapsed + used);
+    remaining -= used;
+    const progress = clamp(travelledDistance(flight) / flight.length, 0, 1);
+    flight.progress = progress;
+    const u = curveParameter(flight, progress), position = curve(flight, u), heading = tangent(flight, u);
+    bird.x = position.x; bird.y = position.y;
+    const length = Math.hypot(heading.x, heading.y) || 1, speed = flightSpeed(flight);
+    bird.vx = heading.x / length * speed; bird.vy = heading.y / length * speed;
+    bird.landing = flight.destination === null ? 0 : smoother((progress - .72) / .28);
+    // Age is continuous across route extensions and time spent out of frame.
+    const launching = 1 - smooth(bird.age / .8);
+    const glideWindow = smooth((progress - .22) / .12) * (1 - smooth((progress - .53) / .12));
+    const targetGlide = glideWindow * .8 * (flight.length > 300 ? 1 : .35);
+    const blend = 1 - Math.exp(-used * 7);
+    bird.glide += (targetGlide - bird.glide) * blend;
+    const targetPower = mix(.76, .3, bird.glide) + launching * .14 + bird.landing * .15;
+    bird.wingPower += (targetPower - bird.wingPower) * blend;
+    bird.wingPhase += used * TAU * (3.15 + launching * .55 + bird.landing * .45 - bird.glide * 1.35);
+    bird.reaction = 1 - smooth(bird.age / .42);
+    const pitchTarget = clamp(Math.atan2(heading.y, Math.abs(heading.x) || .01) * .28, -.35, .25) * (1 - bird.landing) - bird.landing * .2;
+    bird.pitch += (pitchTarget - bird.pitch) * (1 - Math.exp(-used * 9));
+    bird.bank += (Math.sin(progress * Math.PI * 2) * .055 * (1 - bird.landing) - bird.bank) * blend;
+    if (flight.destination !== null && progress > .72) bird.phase = 'landing';
+    const outside = !!state.viewport && !inViewport(bird, state.viewport);
+    if (flight.destination === null && outside && bird.phase !== 'away') {
+      bird.phase = 'away'; bird.wait = bird.age + 10 + random(state) * 9;
+    }
+    if (flight.elapsed < flight.duration - 1e-9) return;
+    bird.x = flight.to.x; bird.y = flight.to.y;
+    if (flight.destination !== null) {
+      bird.phase = 'settling'; bird.perch = flight.destination; bird.landing = 1; bird.age = 0;
+      bird.wait = restDuration(state); bird.idleAge = 0; bird.nextIdle = 3 + random(state) * 4;
+      bird.flight = null; bird.vx = 0; bird.vy = 0;
+      return;
+    }
+    if (outside) {
+      // Keep its real last position. A later camera change can reveal it, and
+      // its return starts here rather than spawning a new bird in the sky.
+      bird.flight = null; bird.vx = 0; bird.vy = 0;
+      return;
+    }
+    const continuation = planExit(state, world, level, bird, true);
+    if (!continuation) {
+      bird.flight = null; bird.vx = 0; bird.vy = 0;
+      return;
+    }
+    beginFlight(bird, continuation, true);
+  }
 }
 
 function updateIdle(bird: AmbientBird, state: AmbientState, step: number) {
@@ -368,46 +472,45 @@ function updateIdle(bird: AmbientBird, state: AmbientState, step: number) {
   }
 }
 
-function returnFromSky(state: AmbientState, world: GameWorld, level: PlatformLevel, bird: AmbientBird) {
+function returnFromOutside(state: AmbientState, world: GameWorld, level: PlatformLevel, bird: AmbientBird) {
+  if (!state.viewport || inViewport(bird, state.viewport)) return;
   const original = state.perches[bird.perch];
   const candidates = state.perches.map((point, index) => ({ point, index }))
     .filter(({ point, index }) => distance(point, original) < 650 && freePerch(state, world, bird, index))
     .sort((a, b) => distance(a.point, original) - distance(b.point, original));
-  for (const { point, index } of candidates) for (const side of [-1, 1]) {
-    const from = { x: point.x + side * 260, y: -150 };
-    const flight = prepareFlight(from, point, index, 120, true);
+  for (const { point, index } of candidates) for (const arc of [120, 240, 360]) {
+    const flight = prepareFlight(bird, point, index, arc, true);
     if (!clearFlight(flight, world, level)) continue;
-    bird.x = from.x; bird.y = from.y; bird.reaction = 0;
-    beginFlight(bird, flight);
+    bird.reaction = 0;
+    beginFlight(bird, flight, true);
     return;
   }
-  bird.age = 0; bird.wait = 4;
+  bird.wait = bird.age + 4;
 }
 
 /** Presentation only: no write to the level, player, collisions or camera. */
 export function updateAmbient(
   state: AmbientState, world: GameWorld, level: PlatformLevel, dt: number, input: AmbientInput = {},
 ): AmbientState {
+  if (state.levelId !== level.id) return state;
+  if (validViewport(input.viewport)) state.viewport = { ...input.viewport };
+  // Camera changes are not motion. Even during pause, an old off-screen bird
+  // can become visible again; restore its existing flight without moving it.
+  if (state.viewport) for (const bird of state.birds) {
+    if (bird.phase === 'away' && inViewport(bird, state.viewport)) bird.phase = 'flying';
+  }
   const step = Math.max(0, Math.min(.1, Number.isFinite(dt) ? dt : 0));
-  if (!step || state.levelId !== level.id) return state;
+  if (!step) return state;
   if (input.reducedMotion) {
-    if (!state.reducedMotion) for (const bird of state.birds) {
-      const perch = state.perches[bird.perch];
-      if (!perch) continue;
-      bird.x = perch.x; bird.y = perch.y; bird.phase = 'perched'; bird.flight = null;
-      bird.age = 0; bird.pitch = 0; bird.bank = 0; bird.wingPower = 0; bird.glide = 0;
-      bird.reaction = 0; bird.landing = 0; bird.idleAction = 'rest'; bird.idleProgress = 0; bird.turn = bird.facing;
-    }
+    // Freeze the current pose and position, including an airborne bird. Moving
+    // it back to its old perch here caused a visible disappearance on mobile.
     state.reducedMotion = true;
     return state;
   }
   state.time += step;
-  if (state.reducedMotion) {
-    for (const bird of state.birds) bird.wait = restDuration(state);
-    state.reducedMotion = false;
-  }
-  const inShot = (bird: AmbientBird) => input.viewport
-    ? bird.x > input.viewport.cameraX - 100 && bird.x < input.viewport.cameraX + input.viewport.viewWidth + 100
+  state.reducedMotion = false;
+  const inShot = (bird: AmbientBird) => state.viewport
+    ? inViewport(bird, state.viewport, 100)
     : Math.abs(bird.x - world.player.x) < 650;
   for (const bird of state.birds) {
     if (bird.phase === 'perched' && !inShot(bird)) continue;
@@ -445,7 +548,7 @@ export function updateAmbient(
           bird.phase = 'perched'; bird.age = 0; bird.landing = 0; bird.wait = 5; bird.reactAfter = state.time + 5;
         }
       }
-    } else if (bird.phase === 'flying' || bird.phase === 'landing') fly(bird, state, step);
+    } else if (bird.phase === 'flying' || bird.phase === 'landing') fly(bird, state, world, level, step);
     else if (bird.phase === 'settling') {
       const settle = smoother(bird.age / AMBIENT_MOTION.settling);
       bird.landing = 1 - settle; bird.wingPower = .76 * (1 - settle); bird.reaction = 0;
@@ -454,8 +557,10 @@ export function updateAmbient(
       if (bird.age >= AMBIENT_MOTION.settling) {
         bird.phase = 'perched'; bird.age = 0; bird.landing = 0; bird.wingPower = 0; bird.pitch = 0; bird.bank = 0;
       }
+    } else if (bird.flight) {
+      fly(bird, state, world, level, step);
     } else if (bird.age >= bird.wait && !state.birds.some(other => other.id !== bird.id && other.flight && Math.abs(other.x - bird.x) < 800)) {
-      returnFromSky(state, world, level, bird);
+      returnFromOutside(state, world, level, bird);
     }
   }
   for (const mote of state.motes) {
@@ -471,24 +576,23 @@ export function updateAmbient(
  */
 export function drawAmbient(
   ctx: CanvasRenderingContext2D, state: AmbientState, level: PlatformLevel, world: GameWorld,
-  options: { cameraX: number; viewWidth: number; ink: string; background: string; pixelScale?: number; reducedMotion?: boolean },
+  options: { cameraX: number; viewWidth: number; top?: number; bottom?: number; ink: string; background: string; pixelScale?: number; reducedMotion?: boolean },
 ) {
   if (state.levelId !== level.id) return;
   const pixelScale = Math.max(.15, options.pixelScale ?? 1);
   const readable = Math.min(1.55, Math.max(1, .72 / pixelScale));
   const reduced = !!options.reducedMotion || state.reducedMotion;
-  const visible = (point: PlatformPoint, margin = 65) => point.x > options.cameraX - margin && point.x < options.cameraX + options.viewWidth + margin;
   ctx.save(); ctx.translate(-options.cameraX, 0);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = options.ink;
-  for (const mote of state.motes.filter(point => visible(point) && distance(point, world.player) > 120).slice(0, 1)) {
+  for (const mote of state.motes) {
     ctx.save(); ctx.translate(mote.x, mote.y); ctx.scale(readable, readable);
     const breathe = reduced ? .7 : .45 + smooth((Math.sin(state.time * .7 + mote.phase) + 1) * .5) * .45;
     ctx.globalAlpha = breathe * .42; ctx.fillStyle = options.ink;
     ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, TAU); ctx.fill(); ctx.restore();
   }
-  // Restraint keeps the action readable: several perches may exist in world
-  // space, but the camera never frames a crowd of competing gestures.
-  for (const bird of state.birds.filter(point => point.phase !== 'away' && visible(point)).slice(0, 3)) {
+  // Population is limited at creation. Never hide a visible fourth bird, or a
+  // dormant bird exposed by a camera change: only the canvas edge clips it.
+  for (const bird of state.birds) {
     drawAnimatedBird(ctx, bird, state.time, {
       ink: options.ink, background: options.background, pixelScale, sizeScale: readable, reducedMotion: reduced,
     });

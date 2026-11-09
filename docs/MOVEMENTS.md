@@ -15,7 +15,7 @@ La planche de poses fournie par le joueur sert de référence de silhouette. L�
 
 Le [site consacré à Cavandoli](https://osvaldocavandoli.com/i-serial/) décrit le personnage comme une partie du trait : il marche, rencontre un obstacle et interpelle la main qui complète le décor. Il présente sa voix comme du grammelot.
 
-Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux introduits en version 1.3.0 et conservés en 1.4.0 sont identifiés dans [CREDITS.md](../CREDITS.md).
+Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux introduits en version 1.3.0 et conservés en 1.5.0 sont identifiés dans [CREDITS.md](../CREDITS.md).
 
 ## Traduction dans le personnage jouable
 
@@ -45,13 +45,21 @@ Neuf passages proposent deux plans, soit dix-huit variantes : détour vers une �
 
 En portrait comme en paysage, les flèches occupent la zone du pouce gauche ; baisser et se redresser sont à droite. Les poignées se saisissent directement dans la scène, sans bouton de déplacement automatique. La scène occupe toute la fenêtre, les commandes flottent dans les coins, les menus défilent séparément et les réglages restent accessibles. La caméra réserve une marge sous le sol pour que les pouces ne cachent pas le passage. Le changement de présentation ne modifie ni les collisions ni le sens de la marche. Les commandes personnalisées conservent deux emplacements de touche par action.
 
-## Oiseaux articulés de la version 1.4.0
+## Oiseaux articulés de la version 1.5.0
 
-Les oiseaux sont des dessins vectoriels créés pour le jeu, animés par le code ; ils ne sont pas des images ou des prises de vues extraites de l’œuvre. Le même corps, la même tête, les mêmes ailes et la même queue restent présents pendant tout le cycle. Les ailes articulent épaule, coude et poignet avec une poussée plus courte que le retour ; les extrémités suivent avec un léger retard. Au repos, les deux pieds restent sur la ligne pendant la respiration, le picorage, les regards et le lissage des plumes.
+Les oiseaux sont des dessins vectoriels créés pour le jeu, animés par le code ; ils ne sont pas des images ou des prises de vues extraites de l’œuvre. Le même corps, la même tête, les mêmes ailes et la même queue restent présents pendant tout le cycle. Les ailes articulent épaule, coude et poignet avec une poussée plus courte que le retour ; les extrémités suivent avec un léger retard. Le poignet replie les plumes pendant le retour de l’aile ; la tête reste en partie stabilisée lorsque le corps s’incline. Au repos, les deux pieds restent sur la ligne pendant la respiration, le picorage, les regards et le lissage des plumes.
 
 Le départ comporte un regard et une préparation de 0,42 seconde. Le retournement passe par une pose frontale avant l’envol. Les trajectoires sont courbes, avec poussée progressive, croisière bornée et freinage avant l’arrivée. Les ailes se relèvent, la queue s’ouvre et les pattes rejoignent le perchoir ; l’amorti dure 0,52 seconde avant le repli complet. Ce rythme est une mise en scène pour le jeu, pas une simulation biologique.
 
-Les pauses volontaires durent normalement 18 à 34 secondes. Au plus trois oiseaux sont dessinés dans le champ ; un second départ volontaire attend que l’activité voisine soit terminée. Les oiseaux posés hors champ ne lancent pas d’activité décorative. La recherche d’un perchoir et du trajet tient compte des surfaces, des dessins validés, des rails et des enveloppes des dangers mobiles. Si aucun départ dégagé n’est possible, l’oiseau se détend sur place au lieu de traverser le décor. Les trajectoires, les poses et le temps décoratif se figent pendant la pause ; le réglage de réduction des animations conserve les silhouettes posées.
+Les pauses volontaires durent normalement 18 à 34 secondes. Le rendu conserve tous les oiseaux présents dans le champ ; il n’applique plus de plafond qui pourrait en masquer un brusquement. Un second départ volontaire attend que l’activité voisine soit terminée. Les oiseaux posés hors champ ne lancent pas d’activité décorative. La recherche d’un perchoir et du trajet tient compte des surfaces, des dessins validés, des rails et des enveloppes des dangers mobiles. Si aucun départ dégagé n’est possible, l’oiseau se détend sur place au lieu de traverser le décor. Les trajectoires, les poses et le temps décoratif se figent pendant la pause ; le réglage de réduction des animations fige la pose actuelle, même en plein vol, sans ramener le corps dans une silhouette posée.
+
+La sortie est calculée avec la largeur, le haut, le bas et l’échelle du cadre réel. La silhouette complète doit être dehors avant une mise au repos hors champ ; le vol continue si une caméra en déplacement le conserve à l’écran. Un retour utilise la position réellement atteinte, sans création d’un nouvel oiseau à une hauteur arbitraire.
+
+## Mécanismes et sons de la version 1.5.0
+
+Le pont du chapitre 2 coulisse depuis sa rive et le volet du chapitre 5 monte sur une glissière oblique. Les rails sont fixes ; chariots, poulies, tiges et contrepoids suivent la progression effectivement utilisée par la physique. Les choix de dessin et les identifiants de sauvegarde sont conservés.
+
+Les bruitages sont des textures PCM produites localement : pas, souffle des ailes, pépiements courts, friction et impacts des mécanismes. Le planificateur observe les vrais changements d’état et de position, tient compte du cadre et de la distance, et remet ses observations à zéro à la reprise. Il n’ajoute ni boucle de moteur au repos ni bande sonore extérieure. Les seize fragments de voix originale restent inchangés.
 
 ## Vérification
 

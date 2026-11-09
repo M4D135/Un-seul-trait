@@ -1,4 +1,4 @@
-# Compilation autonome — version 1.4.0
+# Compilation autonome — version 1.5.0
 
 ## Prérequis
 
@@ -42,9 +42,9 @@ La compilation remplace `__TRAIT_HD_HAND_ASSET__` et `__TRAIT_ORIGINAL_AUDIO_ASS
 
 `scripts/public-test.mjs` repère les fichiers `tests/**/*.test.ts` et `.spec.ts`, puis les compile avec TypeScript en CommonJS, cible ES2022, dans un dossier temporaire. Node exécute les tests compilés ; le dossier est supprimé à la fin, même en cas d’échec. Cela permet de conserver les imports TypeScript relatifs du projet sans ajouter de transpileur d’exécution.
 
-Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. La suite complète de la version 1.4.0 passe ses **90 tests**. Elle comprend **14 tests sur les oiseaux**, **10 tests sur les choix, la reprise du dessin et les marches franchissables**, et **6 tests sur les conséquences physiques des énigmes**. Ces contrôles ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
+Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. La suite couvre aussi la présence des oiseaux jusqu’à la sortie de la silhouette entière, les changements de cadre, les poses continues, les textures sonores et les nouveaux mécanismes. Les notes de version donnent le résultat de la suite complète au moment de la publication. Ces contrôles ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
 
-Pour vérifier l’interface de la version 1.4.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
+Pour vérifier l’interface de la version 1.5.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
 
 - La scène et les commandes restent dans le viewport ; le geste de jeu ne fait pas défiler la page.
 - Les flèches sont à gauche, baisser et se redresser à droite ; les boutons restent accessibles avec les zones réservées aux encoches et à la barre d’accueil.
@@ -54,12 +54,14 @@ Pour vérifier l’interface de la version 1.4.0, ouvrir `npm run dev` ou `npm r
 - Les menus possèdent leur propre défilement et un bouton de fermeture accessible ; les réglages restent disponibles en plein écran.
 - Pendant un geste, caméra et zoom sont immobiles. Une rotation d’écran interrompt proprement le geste, conserve le brouillon reprenable à son extrémité et garde le dernier pont valide.
 - Les poignées se déplacent uniquement pendant une prise directe; relâcher interrompt le mouvement, y compris celui d’un ascenseur.
+- Suivre un oiseau jusqu’à sa sortie complète, en portrait et en paysage. Faire défiler la caméra pendant sa fuite et changer de format : aucune limite de nombre ou de durée ne doit le masquer à l’intérieur du cadre. Les retours partent de leur dernière position hors champ.
 - Les oiseaux préparent leur envol, tournent sans inversion brusque du profil, freinent avant le posé et gardent les pieds sur la ligne au repos. Observer un cycle en mouvement, ainsi que la proximité d’une scie, d’une presse et d’un plafond bas ; une simple image fixe ne valide pas le rythme.
-- Après une action du joueur, vérifier les réactions audio, le volume, la pause et les éventuels replis de lecture du navigateur. La préparation des extraits a vérifié leurs formats et durées ; elle n’a pas comporté de validation auditive par les outils d’étude.
+- Déplacer le pont coulissant du chapitre 2 puis marcher dessus. Ouvrir le volet oblique du chapitre 5 et parcourir les deux variantes du passage ; le dessin du mécanisme et sa collision doivent rester alignés.
+- Après une action du joueur, vérifier les réactions audio, le volume, la pause et les éventuels replis de lecture du navigateur. Les tests audio contrôlent le signal PCM, la variété, les attaques et fins silencieuses, les déclenchements liés au mouvement, la pause et la déconnexion des sources. Ils ne constituent pas une écoute subjective. Les seize fragments originaux n’ont pas changé.
 
 ## Fichier hors ligne
 
-Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.4.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
+Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.5.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
 
 Une adresse `file:` ne possède pas les mêmes garanties de stockage qu’une adresse HTTP. Si le navigateur refuse `localStorage`, la partie fonctionne sans sauvegarde persistante. Le plein écran peut être restreint par le navigateur. **Extraits originaux** est le mode audio par défaut ; **Grammelot synthétique** et **Italien synthétique** restent des options. Le mode italien ne propose que les voix locales déjà installées.
 
@@ -80,6 +82,6 @@ Dans le dossier exporté, `npm ci && npm run check` vérifie le projet comme le 
 
 ## Publication et déploiement
 
-GitHub Actions conserve deux rôles : le workflow **« Vérification du jeu »** contrôle les types, les tests et le build ; le workflow **« Publication linea.estrasse.fr »** déploie le site utilisateur sur **https://linea.estrasse.fr** à chaque push sur `main`. La configuration du déploiement est décrite dans [deploy/README.md](../deploy/README.md).
+GitHub Actions conserve deux rôles : le workflow **« Vérification du jeu »** contrôle les types, les tests et le build ; le workflow **« Publication linea.estrasse.fr »** compile les fichiers et met à jour la branche `site` à chaque push sur `main`. La mise en service sur **https://linea.estrasse.fr** dépend ensuite du service de mise à jour du serveur. La configuration du déploiement est décrite dans [deploy/README.md](../deploy/README.md).
 
 La configuration des chemins relatifs et des builds statiques suit la [documentation officielle de Vite](https://vite.dev/guide/build.html).

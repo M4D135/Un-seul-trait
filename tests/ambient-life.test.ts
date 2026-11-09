@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createAmbientState, updateAmbient, drawAmbient, type AmbientState } from '../lib/trait/ambient-life';
-import { sampleBirdPose } from '../lib/trait/ambient-bird-renderer';
+import { createAmbientState, updateAmbient, drawAmbient, type AmbientState, type AmbientBird, type AmbientViewport } from '../lib/trait/ambient-life';
+import { drawAnimatedBird, sampleBirdPose } from '../lib/trait/ambient-bird-renderer';
 import { createWorld, getHazardPosition, type GameWorld, type PlatformLevel } from '../lib/trait/platformer';
 
 const dt = 1 / 60;
+const landscape: AmbientViewport = { cameraX: 0, viewWidth: 1000, top: -100, bottom: 650, pixelScale: 1 };
 
 function fixture(changes: Partial<PlatformLevel> = {}) {
   const level: PlatformLevel = {
@@ -18,7 +19,7 @@ function fixture(changes: Partial<PlatformLevel> = {}) {
 
 function advance(state: AmbientState, world: GameWorld, level: PlatformLevel, seconds: number,
   input: Parameters<typeof updateAmbient>[4] = {}) {
-  for (let i = 0; i < Math.ceil(seconds / dt); i++) updateAmbient(state, world, level, dt, input);
+  for (let i = 0; i < Math.ceil(seconds / dt); i++) updateAmbient(state, world, level, dt, { viewport: state.viewport ?? landscape, ...input });
 }
 
 test('approaching a resting bird prepares its takeoff, follows an arc, brakes and settles on the line', () => {
@@ -65,12 +66,17 @@ test('a tap scares a bird while mere hovering does not, and a departed bird retu
   const awayAt = state.time;
   advance(state, world, level, 2);
   assert.equal(bird.phase, 'away', 'it does not instantly reappear under the pointer');
-  let returnedThroughSky = false;
+  let returnedFromOutside = false;
   for (let i = 0; i < 2500 && bird.phase !== 'perched'; i++) {
+    const previous = { x: bird.x, y: bird.y }, previousPhase = bird.phase;
     updateAmbient(state, world, level, dt);
-    returnedThroughSky ||= bird.phase === 'flying' && bird.y < 0;
+    assert(distanceFrom(previous, bird) <= 115 * dt, 'the bird keeps its real position, including when it returns');
+    if (previousPhase === 'away' && bird.phase === 'flying') {
+      returnedFromOutside = true;
+      assert.deepEqual({ x: bird.x, y: bird.y }, previous, 'a return starts exactly where the outgoing flight stopped');
+    }
   }
-  assert(returnedThroughSky, 'return enters above the visible field rather than popping onto the floor');
+  assert(returnedFromOutside, 'return enters from its actual off-screen position');
   assert(state.time - awayAt >= 10);
   assert.equal(bird.phase, 'perched');
   assert.equal(bird.x, state.perches[0].x);
@@ -140,31 +146,36 @@ function commands(state: AmbientState, world: GameWorld, level: PlatformLevel, r
   return result;
 }
 
-test('reduced motion keeps resting silhouettes and does not accumulate a resume jump', () => {
+test('reduced motion freezes an airborne silhouette in place and resumes without a jump', () => {
   const { state, world, level } = fixture();
   const bird = state.birds[0];
   updateAmbient(state, world, level, dt, { pointer: { x: bird.x, y: bird.y - 15 }, touched: true });
-  advance(state, world, level, .5);
+  advance(state, world, level, 1.1);
+  const flying = structuredClone(bird), frameBefore = commands(state, world, level);
   updateAmbient(state, world, level, dt, { reducedMotion: true });
+  assert.deepEqual(bird, flying, 'switching the preference cannot move a bird back to its old perch');
+  assert.deepEqual(commands(state, world, level, true), frameBefore, 'the same airborne pose remains on screen');
   const before = structuredClone(state), drawing = commands(state, world, level, true);
   advance(state, world, level, 20, { reducedMotion: true, touched: true, pointer: { x: bird.x, y: bird.y - 15 } });
   assert.deepEqual(state, before);
   assert.deepEqual(commands(state, world, level, true), drawing);
-  assert(state.birds.every(item => item.phase === 'perched' && !item.flight));
+  assert(bird.phase === 'flying' && bird.flight);
+  updateAmbient(state, world, level, dt, { reducedMotion: false });
+  assert(distanceFrom(flying, bird) < 115 * dt, 'resume continues from the frozen position');
 });
 
-test('resting outlines keep both feet on the line and no more than three birds fill a shot', () => {
+test('every visible bird is rendered even when more than three share the shot', () => {
   const { state, world, level } = fixture();
   state.motes = [];
   const source = state.birds[0];
   state.birds = [0, 1, 2, 3, 4, 5].map(index => ({ ...source, id: index, x: 250 + index * 80, age: 0 }));
   const before = structuredClone(state), drawn = commands(state, world, level);
   const birdPlacements = drawn.filter(([method, x]) => method === 'translate' && x >= 250);
-  assert.equal(birdPlacements.length, 3);
+  assert.equal(birdPlacements.length, 6, 'population is bounded at creation, never by dropping a fourth visible silhouette');
   const contours = drawn.filter(([method, , y]) => method === 'moveTo' && y === 0);
-  assert.equal(contours.length, 3, 'each ground contour starts at one actual contact point');
+  assert.equal(contours.length, 6, 'each ground contour starts at one actual contact point');
   const feet = drawn.filter(([method, , , , y]) => method === 'quadraticCurveTo' && y === 0);
-  assert.equal(feet.length, 3, 'each ground contour returns to the other contact point');
+  assert.equal(feet.length, 6, 'each ground contour returns to the other contact point');
   assert(drawn.every(([, ...args]) => args.every(Number.isFinite)));
   assert.deepEqual(state, before, 'draw calls cannot restart life or move it');
 });
@@ -172,10 +183,10 @@ test('resting outlines keep both feet on the line and no more than three birds f
 test('voluntary animation leaves long calm beats and does not advance off-screen birds', () => {
   const { state, world, level } = fixture();
   world.player.x = -1000;
-  advance(state, world, level, 12, { viewport: { cameraX: 0, viewWidth: level.width } });
+  advance(state, world, level, 12, { viewport: { ...landscape, viewWidth: level.width } });
   assert(state.birds.every(bird => bird.phase === 'perched'), 'ambient life does not immediately fill the screen with flights');
   const offscreen = state.birds[state.birds.length - 1], before = structuredClone(offscreen);
-  advance(state, world, level, 7, { viewport: { cameraX: 0, viewWidth: 400 } });
+  advance(state, world, level, 7, { viewport: { ...landscape, viewWidth: 400 } });
   assert.deepEqual(offscreen, before, 'a future part of the stage keeps its quiet starting pose');
 });
 
@@ -296,4 +307,117 @@ test('a newly drawn obstruction cancels a takeoff calmly instead of clipping or 
   assert.equal(starts, 1, 'a blocked route has a quiet recovery interval');
   assert.equal(bird.phase, 'perched');
   assert(bird.reaction < .001 && bird.wingPower < .001);
+});
+
+function singlePerch() {
+  return fixture({ width: 380, start: { x: -200, y: 430 }, goal: { x: 1000, y: 430 },
+    surfaces: [{ a: { x: 80, y: 430 }, b: { x: 340, y: 430 } }] });
+}
+
+/** Independent bounds of the actual rendered curves, including wing poses. */
+function paintedBounds(bird: AmbientBird, time: number, pixelScale: number) {
+  type Matrix = [number, number, number, number, number, number];
+  let matrix: Matrix = [1, 0, 0, 1, 0, 0];
+  const stack: Matrix[] = [], points: { x: number; y: number }[] = [];
+  const point = (x: number, y: number) => points.push({ x: matrix[0] * x + matrix[2] * y + matrix[4], y: matrix[1] * x + matrix[3] * y + matrix[5] });
+  const ctx = {
+    save: () => stack.push([...matrix]), restore: () => { matrix = stack.pop()!; },
+    translate: (x: number, y: number) => { matrix[4] += matrix[0] * x + matrix[2] * y; matrix[5] += matrix[1] * x + matrix[3] * y; },
+    scale: (x: number, y: number) => { matrix[0] *= x; matrix[1] *= x; matrix[2] *= y; matrix[3] *= y; },
+    rotate: (angle: number) => { const [a, b, c, d, e, f] = matrix, cs = Math.cos(angle), sn = Math.sin(angle); matrix = [a * cs + c * sn, b * cs + d * sn, c * cs - a * sn, d * cs - b * sn, e, f]; },
+    moveTo: point, lineTo: point,
+    quadraticCurveTo: (x1: number, y1: number, x2: number, y2: number) => { point(x1, y1); point(x2, y2); },
+    bezierCurveTo: (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) => { point(x1, y1); point(x2, y2); point(x3, y3); },
+    arc: (x: number, y: number, radius: number) => { point(x - radius, y - radius); point(x + radius, y + radius); },
+    fillRect: (x: number, y: number, width: number, height: number) => { point(x, y); point(x + width, y + height); },
+    beginPath() {}, closePath() {}, fill() {}, stroke() {},
+  } as unknown as CanvasRenderingContext2D;
+  drawAnimatedBird(ctx, bird, time, { ink: '#fff', background: '#064b8e', pixelScale,
+    sizeScale: Math.min(1.55, Math.max(1, .72 / Math.max(.15, pixelScale))) });
+  assert(points.length > 0, 'even an off-screen/away bird has a renderable silhouette');
+  const stroke = 4 / Math.max(.15, pixelScale);
+  return { left: Math.min(...points.map(p => p.x)) - stroke, right: Math.max(...points.map(p => p.x)) + stroke,
+    top: Math.min(...points.map(p => p.y)) - stroke, bottom: Math.max(...points.map(p => p.y)) + stroke };
+}
+
+function whollyOutside(bounds: ReturnType<typeof paintedBounds>, viewport: AmbientViewport) {
+  return bounds.right < viewport.cameraX || bounds.left > viewport.cameraX + viewport.viewWidth
+    || bounds.bottom < viewport.top || bounds.top > viewport.bottom;
+}
+
+test('a tall portrait shot cannot lose a bird at a fixed sky height', () => {
+  const { state, world, level } = singlePerch();
+  const bird = state.birds[0], viewport: AmbientViewport = { cameraX: -100, viewWidth: 650, top: -1900, bottom: 800, pixelScale: .28 };
+  updateAmbient(state, world, level, dt, { viewport, touched: true, pointer: { x: bird.x, y: bird.y - 15 } });
+  let exited = false, previous = { x: bird.x, y: bird.y };
+  for (let i = 0; i < 1800; i++) {
+    updateAmbient(state, world, level, dt, { viewport });
+    assert(distanceFrom(previous, bird) <= 116 * dt, 'outgoing and returning positions are continuous');
+    previous = { x: bird.x, y: bird.y };
+    const bounds = paintedBounds(bird, state.time, viewport.pixelScale);
+    if (bird.phase === 'away') {
+      assert(whollyOutside(bounds, viewport), 'all rendered wing/tail points must be outside the real portrait rectangle');
+      exited = true; break;
+    }
+  }
+  assert(exited, 'it leaves through an actual edge instead of hovering indefinitely');
+});
+
+test('an exit keeps flying continuously when the camera follows it beyond its initial destination', () => {
+  const { state, world, level } = singlePerch(), bird = state.birds[0];
+  const following = (): AmbientViewport => ({ cameraX: bird.x - 220, viewWidth: 440, top: bird.y - 350, bottom: bird.y + 350, pixelScale: .75 });
+  updateAmbient(state, world, level, dt, { viewport: following(), touched: true, pointer: { x: bird.x, y: bird.y - 15 } });
+  let previous = { x: bird.x, y: bird.y }, previousFlight = bird.flight, segments = 0;
+  let previousVelocity = { x: 0, y: 0 };
+  for (let i = 0; i < 1600; i++) {
+    updateAmbient(state, world, level, dt, { viewport: following() });
+    assert.notEqual(bird.phase, 'away', 'following the bird keeps it in the shot');
+    assert(distanceFrom(previous, bird) <= 116 * dt);
+    if (bird.flight && bird.flight !== previousFlight) {
+      segments++;
+      if (segments > 1) {
+        assert(bird.age > .42 && sampleBirdPose(bird, state.time).airborne > .99, 'a route extension never restarts the takeoff pose');
+        assert(distanceFrom(previousVelocity, { x: bird.vx, y: bird.vy }) < 12, 'joined flight tangents preserve velocity');
+      }
+      previousFlight = bird.flight;
+    }
+    previous = { x: bird.x, y: bird.y }; previousVelocity = { x: bird.vx, y: bird.vy };
+  }
+  assert(segments >= 3, 'the camera test passes several original route endpoints');
+});
+
+test('zooming or rotating to reveal an off-screen bird preserves its position, pose and rendering', () => {
+  const { state, world, level } = singlePerch(), bird = state.birds[0];
+  updateAmbient(state, world, level, dt, { viewport: landscape, touched: true, pointer: { x: bird.x, y: bird.y - 15 } });
+  for (let i = 0; i < 1800 && !(bird.phase === 'away' && !bird.flight); i++) updateAmbient(state, world, level, dt, { viewport: landscape });
+  assert.equal(bird.phase, 'away');
+  const position = { x: bird.x, y: bird.y }, age = bird.age, pose = sampleBirdPose(bird, state.time);
+  const expanded: AmbientViewport = { cameraX: bird.x - 450, viewWidth: 1000, top: bird.y - 900, bottom: bird.y + 900, pixelScale: .25 };
+  // Rendering must not depend on update order: the browser can resize while paused.
+  assert(!whollyOutside(paintedBounds(bird, state.time, expanded.pixelScale), expanded));
+  const raw = commands(state, world, level);
+  assert(raw.some(([method, x, y]) => method === 'translate' && x === bird.x && y === bird.y));
+  updateAmbient(state, world, level, 0, { viewport: expanded });
+  assert.equal(bird.phase, 'flying');
+  assert.deepEqual({ x: bird.x, y: bird.y }, position);
+  assert.equal(bird.age, age);
+  assert.deepEqual(sampleBirdPose(bird, state.time), pose);
+  for (let i = 0; i < 90; i++) {
+    const previous = { x: bird.x, y: bird.y };
+    updateAmbient(state, world, level, dt, { viewport: expanded });
+    assert(distanceFrom(previous, bird) <= 116 * dt);
+  }
+});
+
+test('without a complete viewport a flight is never hidden or respawned at an assumed boundary', () => {
+  const { state, world, level } = singlePerch(), bird = state.birds[0];
+  updateAmbient(state, world, level, dt, { touched: true, pointer: { x: bird.x, y: bird.y - 15 } });
+  let previous = { x: bird.x, y: bird.y };
+  for (let i = 0; i < 1600; i++) {
+    updateAmbient(state, world, level, dt);
+    assert.notEqual(bird.phase, 'away');
+    assert(distanceFrom(previous, bird) <= 116 * dt);
+    previous = { x: bird.x, y: bird.y };
+  }
+  assert.equal(state.viewport, null);
 });

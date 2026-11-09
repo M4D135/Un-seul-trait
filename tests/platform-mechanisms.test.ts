@@ -288,6 +288,91 @@ test('all eighteen bridges still validate through the public stroke API and supp
   assert.equal(count, 18);
 });
 
+test('the sliding bridge can be prepared from the bank or extended under a waiting rider, without a jump', () => {
+  const l = levels[1], m = l.mechanisms!.find(item => item.id === 'passeur-des-dents')!;
+  const w = E.createWorld(l); w.player.x = m.from.x - 20; w.player.y = m.from.y;
+  run(w, l, 3, { ...idle, right: true });
+  assert(w.player.x > m.from.x + m.width / 2 - 3 && w.player.x <= m.from.x + m.width / 2,
+    'the retracted deck leaves a real gap, and the character waits at its end');
+  assert.equal(w.mechanisms[m.id].progress, 0); assert.equal(w.deaths, 0);
+  const waitingX = w.player.x;
+  dragToEnd(w, l, m);
+  assert(Math.abs(w.player.x - waitingX - (m.to.x - m.from.x)) < .001,
+    'the whole deck carries its passenger through the same real translation');
+  assert.equal(w.player.vy, 0); assert(w.player.grounded);
+  run(w, l, .5, { ...idle, right: true });
+  assert(w.player.x > 2155 && w.player.y === 430 && w.player.grounded);
+
+  const prepared = E.createWorld(l);
+  prepared.player.x = m.from.x - m.width / 2 - 30; prepared.player.y = m.from.y; prepared.player.crouching = true;
+  const bankX = prepared.player.x, handle = E.getMechanismHandlePosition(prepared, m);
+  assert(E.beginMechanismInteraction(prepared, l, handle).ok);
+  E.moveMechanismInteraction(prepared, l, { x: handle.x + m.to.x - m.from.x, y: handle.y });
+  E.endMechanismInteraction(prepared);
+  assert.equal(prepared.mechanisms[m.id].progress, 1, 'one quick drag aligns the bridge immediately');
+  assert.equal(prepared.player.x, bankX, 'preparing a bridge does not pull a character who is still on the bank');
+  for (let i = 0; i < 1500 && prepared.player.x < 2180; i++) {
+    tick(prepared, l, { ...idle, right: true, crouch: true });
+    assert.equal(prepared.player.vy, 0);
+    assert(prepared.player.grounded, 'both bridge joints stay connected to the banks');
+  }
+  assert(prepared.player.x >= 2180); assert.equal(prepared.deaths, 0);
+});
+
+test('the oblique shutter projects a direct drag, changes real clearance, and stops before closing on the body', () => {
+  const l = levels[4], m = l.mechanisms!.find(item => item.id === 'porte-du-balcon')!;
+  assert(m.type === 'gate'); assert(m.to.x > m.from.x && m.to.y < m.from.y);
+  const w = E.createWorld(l); w.player.x = 3432; w.player.y = 430;
+  run(w, l, 1, { ...idle, right: true });
+  assert.equal(w.player.x, m.from.x - m.width / 2 - E.PLATFORM_PHYSICS.bodyRadius);
+  dragToEnd(w, l, m, .22);
+  const partiallyOpen = E.getMechanismPosition(w, m);
+  assert(Math.abs(partiallyOpen.x - (m.from.x + (m.to.x - m.from.x) * .22)) < .001);
+  run(w, l, 1, { ...idle, right: true });
+  assert(Math.abs(w.player.x - (partiallyOpen.x - m.width / 2 - E.PLATFORM_PHYSICS.bodyRadius)) < .001,
+    'upright collision follows the displaced panel, not its old vertical rail');
+  run(w, l, 1.2, { ...idle, right: true, crouch: true });
+  assert(w.player.x > partiallyOpen.x + m.width / 2 + E.PLATFORM_PHYSICS.bodyRadius,
+    'the partial opening leaves a real, usable crouched corridor');
+  assert.equal(w.deaths, 0); assert(w.player.grounded && w.player.vy === 0);
+
+  const open = E.createWorld(l); open.player.x = 3432; open.player.y = 430;
+  const handle = E.getMechanismHandlePosition(open, m);
+  assert(E.beginMechanismInteraction(open, l, handle).ok);
+  E.moveMechanismInteraction(open, l, { x: handle.x + m.to.x - m.from.x, y: handle.y + m.to.y - m.from.y });
+  E.endMechanismInteraction(open);
+  assert.deepEqual(E.getMechanismPosition(open, m), m.to, 'a coalesced pointer move reaches the actual endpoint');
+  run(open, l, 1, { ...idle, right: true });
+  assert(open.player.x > 3600 && open.player.grounded && open.player.vy === 0);
+  open.player.x = m.from.x; open.player.vx = 0;
+  dragToEnd(open, l, m, 0);
+  assert(open.mechanisms[m.id].progress > 0, 'closing stops at the body instead of crushing it');
+  assert(E.getMechanismPosition(open, m).y <= open.player.y - E.PLATFORM_PHYSICS.bodyHeight);
+  assert.equal(open.deaths, 0); assert.equal(open.phase, 'playing');
+});
+
+test('old open and partial mechanism saves retain their drawn lines and safe checkpoints with the new variants', () => {
+  for (const [index, id] of [[1, 'passeur-des-dents'], [4, 'porte-du-balcon']] as const) {
+    const l = levels[index], m = l.mechanisms!.find(item => item.id === id)!;
+    for (const progress of [0, .22, .6, 1]) {
+      const saved = saveProgress(E.createWorld(l), l);
+      // v1.3 and v1.4 stored these same IDs and scalar progress values.
+      saved.mechanisms[id] = progress; saved.checkpointIndex = index === 1 ? 1 : 2;
+      delete saved.drawingChoices;
+      saved.constructions = Object.fromEntries(l.drawings.map(d => [d.id, d.path.map(p => ({ ...p }))]));
+      const restored = restoreProgress(JSON.parse(JSON.stringify(saved)), l)!;
+      assert(restored); assert.equal(restored.mechanisms[id].progress, progress);
+      assert.equal(restored.drawn.length, 3);
+      for (const d of l.drawings) assert.deepEqual(restored.constructions[d.id], d.path);
+      run(restored, l, 2);
+      assert.equal(restored.deaths, 0); assert(restored.player.grounded);
+      assert.deepEqual({ x: restored.player.x, y: restored.player.y }, l.checkpoints[saved.checkpointIndex]);
+      dragToEnd(restored, l, m, 1);
+      assert(Math.abs(restored.mechanisms[id].progress - 1) < .000001, 'the legacy partial position remains operable by hand');
+    }
+  }
+});
+
 test('an old saved flat bridge can be redrawn from either bank after the new spike layout', () => {
   const l = levels[0], d = l.drawings[0], saved = saveProgress(E.createWorld(l), l);
   saved.constructions[d.id] = [{ ...d.path[0] }, { ...d.path[d.path.length - 1] }];
