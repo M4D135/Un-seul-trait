@@ -110,16 +110,22 @@ const DRAWING_COURSES: PlatformLevel[] = [
 
 const liftGate = (id: string, x: number, y = 430, height = 210): PlatformMechanism => ({
   id, type: 'gate', title: 'La porte suspendue', prompt: 'Soulève la poignée dorée pour libérer le passage.',
-  from: p(x, y), to: p(x, y - 265), width: 32, height, speed: 205,
+  from: p(x, y), to: p(x, y - 265), width: 32, height, speed: 720,
 });
 const ferry = (id: string, from: PlatformPoint, to: PlatformPoint, width = 132): PlatformMechanism => ({
   id, type: 'platform', title: from.y === to.y ? 'Le passeur' : 'L’ascenseur de la ligne',
-  prompt: 'Monte sur le plateau, puis déplace sa poignée le long du rail.', from, to, width, speed: 150,
+  prompt: 'Monte sur le plateau, puis garde sa poignée en main pendant le déplacement.', from, to, width, speed: 640,
 });
 const parkGear = (hazard: Extract<PlatformHazard, { type: 'gear' }>, parkedY: number): PlatformMechanism => ({
   id: `poignee-${hazard.id}`, type: 'gear', hazardId: hazard.id, title: 'La roue à soulever',
   prompt: 'Soulève la roue avec sa poignée dorée et laisse-la en haut du rail.',
-  from: p(hazard.x, hazard.y), to: p(hazard.x, parkedY), width: hazard.r * 2, speed: 170,
+  from: p(hazard.x, hazard.y), to: p(hazard.x, parkedY), width: hazard.r * 2, speed: 720,
+});
+
+const press = (id: string, x: number, y: number): PlatformMechanism => ({
+  id, type: 'gate', appearance: 'press', title: 'La presse suspendue',
+  prompt: 'Saisis la poignée et soulève la presse. Elle reste où tu la lâches.',
+  from: p(x, y), to: p(x, y - 165), width: 90, height: 126, speed: 700,
 });
 
 /**
@@ -188,9 +194,80 @@ function cooperativeCourse(source: PlatformLevel): PlatformLevel {
       addFlag(5320, 430);
       break;
   }
+  addVerticalDetours(level);
   makeWalkingRoute(level);
+  addDistinctObstacles(level);
   level.checkpoints.sort((a, b) => a.x - b.x);
   return level;
+}
+
+/** Four short changes of floor, each joined by a hand-driven vertical lift.
+ * Existing bridge anchors and checkpoint positions/indices are unchanged.
+ */
+function addVerticalDetours(level: PlatformLevel): void {
+  const mechanisms = level.mechanisms!;
+  switch (level.id) {
+    case 1:
+      level.surfaces[0].b.x = 500;
+      mechanisms.push(ferry('ascenseur-du-debut', p(540, 430), p(540, 300), 132));
+      level.surfaces.push(floor(602, 650, 300), { a: p(650, 300), b: p(759, 430) });
+      break;
+    case 2:
+      level.surfaces[2].b.x = 2310;
+      mechanisms.push(ferry('ascenseur-des-dents', p(2350, 430), p(2350, 290), 128), press('presse-des-dents', 4350, 430));
+      level.surfaces.push(floor(2410, 2460, 290), { a: p(2460, 290), b: p(2541, 430) });
+      break;
+    case 3:
+      mechanisms.push(press('presse-du-pendule', 3460, 330));
+      break;
+    case 4: {
+      const end = level.surfaces[4].b.x;
+      level.surfaces[4].b.x = 4760;
+      mechanisms.push(ferry('ascenseur-de-la-sortie', p(4800, 430), p(4800, 300), 140));
+      level.surfaces.push(floor(4866, 4930, 300), { a: p(4930, 300), b: p(5050, 430) }, floor(5050, end, 430));
+      level.stars[2].x = 4900;
+      break;
+    }
+    case 5:
+      level.surfaces[2].b.x = 2430;
+      mechanisms.push(ferry('ascenseur-descendant', p(2470, 360), p(2470, 430), 144));
+      level.surfaces.push(floor(2538, 2600, 430), { a: p(2600, 430), b: p(2772, 360) });
+      break;
+  }
+}
+
+/** Circular pendulums and broad presses change the silhouette of each hazard.
+ * Their rendered positions are also the positions used by body collisions.
+ */
+function addDistinctObstacles(level: PlatformLevel): void {
+  const handled = new Set((level.mechanisms ?? []).flatMap(m => m.type === 'gear' ? [m.hazardId] : []));
+  for (const hazard of level.hazards) {
+    if (hazard.type !== 'gear') continue;
+    hazard.appearance = 'saw';
+    if (!hazard.id.includes('pendule') || handled.has(hazard.id)) continue;
+    hazard.appearance = 'pendulum';
+    hazard.motion = 'swing';
+    hazard.armLength = 145;
+    hazard.swingAngle = .36;
+    hazard.y = routeHeight(level, hazard.x) - 90;
+    hazard.speed = Math.min(1.5, hazard.speed ?? 1.3);
+  }
+  if (level.id === 3) level.hazards.push({
+    id: 'balancier-du-passage', type: 'gear', appearance: 'pendulum', motion: 'swing',
+    x: 2640, y: 340, r: 27, armLength: 140, swingAngle: .42, speed: 1.2,
+  });
+  for (const mechanism of level.mechanisms ?? []) {
+    if (mechanism.type === 'gate' && ['porte-du-quai', 'porte-du-balcon'].includes(mechanism.id)) {
+      mechanism.appearance = 'press';
+      mechanism.width = 76;
+      mechanism.title = 'La presse du quai';
+    }
+  }
+  if (level.id === 1) level.subtitle = 'Soulève la porte, monte avec l’ascenseur, puis dessine ton arche.';
+  if (level.id === 2) level.subtitle = 'Des roues, un passeur, un ascenseur et une presse à déplacer de ta main.';
+  if (level.id === 3) level.subtitle = 'Les balanciers se croisent : baisse-toi, soulève la presse et trace ton passage.';
+  if (level.id === 4) level.subtitle = 'Traverse les quais, garde la presse levée et prends l’ascenseur jusqu’à l’étoile.';
+  if (level.id === 5) level.subtitle = 'Monte, redescends avec la poignée et dessine entre les deux balcons.';
 }
 
 /** Highest authored walking surface at x, including each reference drawing. */

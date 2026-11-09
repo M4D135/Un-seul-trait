@@ -1,7 +1,7 @@
 import { preparePlayerStroke, STROKE_ANCHOR_RADIUS } from './platform-drawing';
-import { activateNearestMechanism, advanceMechanisms, createMechanismStates, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
+import { advanceMechanisms, createMechanismStates, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
 import type { HandInteraction, MechanismState, PlatformMechanism } from './platform-mechanisms';
-export { activateNearestMechanism, beginMechanismInteraction, endMechanismInteraction, getAvailableMechanism, getMechanismHandlePosition, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
+export { beginMechanismInteraction, endMechanismInteraction, getAvailableMechanism, getMechanismHandlePosition, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
 export type { HandInteraction, MechanismResult, MechanismState, MechanismView, PlatformMechanism } from './platform-mechanisms';
 
 /** Deterministic, DOM-free platform game simulation. Coordinates are in scene units. */
@@ -10,7 +10,11 @@ export type PlatformSurface = { a: PlatformPoint; b: PlatformPoint };
 export type PlatformPalette = 'blue' | 'teal' | 'plum' | 'terracotta';
 
 export type PlatformHazard =
-  | { id: string; type: 'gear'; x: number; y: number; r: number; axis?: 'x' | 'y'; range?: number; speed?: number; phase?: number }
+  | {
+    id: string; type: 'gear'; x: number; y: number; r: number;
+    axis?: 'x' | 'y'; range?: number; speed?: number; phase?: number;
+    appearance?: 'saw' | 'pendulum'; motion?: 'swing'; armLength?: number; swingAngle?: number;
+  }
   | { id: string; type: 'spikes'; x: number; y: number; w: number; h: number };
 
 export type DrawingObstacle = {
@@ -48,8 +52,6 @@ export type PlatformInput = {
   crouch?: boolean;
   /** One-frame pulse, shared by E and the on-screen hand button. */
   draw: boolean;
-  /** Optional one-frame pulse: move the nearest gold handle to its other rail end. */
-  interact?: boolean;
 };
 
 export type GameEvent = 'land' | 'draw-start' | 'draw-complete' | 'star' | 'death' | 'respawn' | 'checkpoint' | 'win' | 'mechanism-start' | 'mechanism-settle';
@@ -122,6 +124,13 @@ export function createWorld(level: PlatformLevel): GameWorld {
 }
 
 export function getHazardPosition(hazard: PlatformHazard, time: number): PlatformPoint {
+  if (hazard.type === 'gear' && hazard.motion === 'swing') {
+    const length = hazard.armLength ?? 150;
+    const angle = Math.sin(time * (hazard.speed ?? 1.3) + (hazard.phase ?? 0)) * (hazard.swingAngle ?? .32);
+    // x/y is the lowest centre. The visible rope and collision centre share
+    // this circular path; the ball rises toward either end of its swing.
+    return { x: hazard.x + Math.sin(angle) * length, y: hazard.y + (Math.cos(angle) - 1) * length };
+  }
   if (hazard.type !== 'gear' || !hazard.axis || !hazard.range) return { x: hazard.x, y: hazard.y };
   const displacement = Math.sin(time * (hazard.speed ?? 1.3) + (hazard.phase ?? 0)) * hazard.range;
   return {
@@ -292,13 +301,18 @@ function capsuleHitsSpikes(player: PlatformPlayer, hazard: Extract<PlatformHazar
   return Math.hypot(px - player.x, py - nearestY) < PLATFORM_PHYSICS.bodyRadius;
 }
 
+/** Shared by walking collisions and each swept step of a hand-carried platform. */
+export function playerTouchesHazard(world: GameWorld, level: PlatformLevel, player: PlatformPlayer, hazard: PlatformHazard): boolean {
+  return hazard.type === 'gear'
+    ? capsuleHitsCircle(player, getWorldHazardPosition(world, level, hazard), hazard.r * .84)
+    : capsuleHitsSpikes(player, hazard);
+}
+
 /** Releasing Down under a beam or wheel keeps the crouch until the head has room. */
 function canStandUpright(world: GameWorld, level: PlatformLevel): boolean {
   const standing: PlatformPlayer = { ...world.player, crouching: false };
   for (const hazard of level.hazards) {
-    if (hazard.type === 'gear'
-      ? capsuleHitsCircle(standing, getWorldHazardPosition(world, level, hazard), hazard.r * 0.84)
-      : capsuleHitsSpikes(standing, hazard)) return false;
+    if (playerTouchesHazard(world, level, standing, hazard)) return false;
   }
   for (const mechanism of level.mechanisms ?? []) {
     if (mechanism.type !== 'gate') continue;
@@ -415,9 +429,7 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
   if (p.y > 675 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) { kill(world, 'fall', events); return; }
   if (world.invulnerable <= 0) {
     for (const hazard of level.hazards) {
-      const hit = hazard.type === 'gear'
-        ? capsuleHitsCircle(p, getWorldHazardPosition(world, level, hazard), hazard.r * 0.84)
-        : capsuleHitsSpikes(p, hazard);
+      const hit = playerTouchesHazard(world, level, p, hazard);
       if (hit) { kill(world, hazard.type, events); return; }
     }
   }
@@ -449,7 +461,8 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
 
 /**
  * Advances one frame, mutating world and returning discrete events for UI/audio.
- * The caller owns pause: do not call while paused. draw/interact are input pulses.
+ * The caller owns pause: do not call while paused. draw is an input pulse;
+ * mechanisms only respond to a currently held pointer handle.
  * Internally split at 120Hz so thin spikes and moving gears cannot be skipped.
  */
 export function updateWorld(world: GameWorld, level: PlatformLevel, input: PlatformInput, elapsed: number): GameEvent[] {
@@ -466,7 +479,6 @@ export function updateWorld(world: GameWorld, level: PlatformLevel, input: Platf
       return events;
     }
   }
-  if (input.interact && world.phase === 'playing' && activateNearestMechanism(world, level).ok) events.push('mechanism-start');
   world.time += dt;
   world.invulnerable = Math.max(0, world.invulnerable - dt);
   updateParticles(world, getWorldSurfaces(world, level), dt);

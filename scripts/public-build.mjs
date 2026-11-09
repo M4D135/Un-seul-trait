@@ -19,8 +19,8 @@ let html = await readFile(resolve(outDir, 'index.html'), 'utf8');
 const credits = {
   project: await readFile(resolve(projectRoot, 'CREDITS.md'), 'utf8'),
   dependencies: await readFile(resolve(projectRoot, 'docs/THIRD-PARTY-NOTICES.md'), 'utf8'),
-  originalMedia: {
-    hand: JSON.parse(await readFile(resolve(projectRoot, 'public/original-hand-manifest.json'), 'utf8')),
+  media: {
+    hand: JSON.parse(await readFile(resolve(projectRoot, 'public/drawing-hand-hd-manifest.json'), 'utf8')),
     voice: JSON.parse(await readFile(resolve(projectRoot, 'public/original-voice-manifest.json'), 'utf8')),
   },
 };
@@ -59,7 +59,7 @@ await writeFile(resolve(outDir, '.nojekyll'), '');
 await copyFile(resolve(projectRoot, 'CREDITS.md'), resolve(outDir, 'CREDITS.md'));
 await mkdir(resolve(outDir, 'docs'), {recursive: true});
 await copyFile(resolve(projectRoot, 'docs/THIRD-PARTY-NOTICES.md'), resolve(outDir, 'docs/THIRD-PARTY-NOTICES.md'));
-for (const name of ['original-hand-manifest.json','original-voice-manifest.json']) {
+for (const name of ['drawing-hand-hd-manifest.json','original-voice-manifest.json']) {
   await copyFile(resolve(projectRoot, 'public', name), resolve(outDir, 'docs', name));
 }
 console.log(`\nJeu statique : ${resolve(outDir, 'index.html')}`);

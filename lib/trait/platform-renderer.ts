@@ -123,6 +123,30 @@ function gear(ctx:CanvasRenderingContext2D,x:number,y:number,r:number,angle:numb
   ctx.restore();
 }
 
+function saw(ctx:CanvasRenderingContext2D,x:number,y:number,r:number,angle:number,ink:string,background:string) {
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.strokeStyle=ink;ctx.fillStyle=background;ctx.lineWidth=STROKE;
+  ctx.beginPath();
+  for(let i=0;i<18;i++){
+    const a=i/18*TAU,b=(i+.65)/18*TAU;
+    if(i===0)ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+    ctx.lineTo(Math.cos(b)*r*.72,Math.sin(b)*r*.72);
+  }
+  ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(0,0,r*.24,0,TAU);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-r*.48,0);ctx.lineTo(-r*.31,0);ctx.moveTo(r*.31,0);ctx.lineTo(r*.48,0);ctx.stroke();
+  ctx.restore();
+}
+
+function pendulum(ctx:CanvasRenderingContext2D,pivot:PlatformPoint,ball:PlatformPoint,r:number,ink:string,background:string) {
+  ctx.save();ctx.strokeStyle=ink;ctx.fillStyle=background;ctx.lineWidth=STROKE;
+  ctx.beginPath();ctx.moveTo(pivot.x-12,pivot.y-5);ctx.lineTo(pivot.x+12,pivot.y-5);ctx.stroke();
+  ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(pivot.x,pivot.y);ctx.lineTo(ball.x,ball.y);ctx.stroke();
+  ctx.beginPath();ctx.arc(pivot.x,pivot.y,4,0,TAU);ctx.fill();ctx.stroke();
+  ctx.lineWidth=STROKE;ctx.beginPath();ctx.arc(ball.x,ball.y,r,0,TAU);ctx.fill();ctx.stroke();
+  ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(ball.x-2,ball.y-2,r*.63,-2.3,-.5);ctx.stroke();
+  ctx.restore();
+}
+
 export function drawPlatformScene(
   ctx: CanvasRenderingContext2D,
   level: PlatformLevel,
@@ -196,8 +220,20 @@ export function drawPlatformScene(
     const seated=surfaces.some(({a,b})=>Math.abs(b.x-a.x)>.01&&position.x>=Math.min(a.x,b.x)&&position.x<=Math.max(a.x,b.x)
       &&Math.abs(a.y+(b.y-a.y)*(position.x-a.x)/(b.x-a.x)-position.y)<.2);
     ctx.fillStyle=palette.background;ctx.strokeStyle=palette.ink;ctx.lineWidth=STROKE;
+    if(mechanism.appearance==='press'){
+      const support=Math.min(mechanism.from.y,mechanism.to.y)-mechanism.height-22;
+      ctx.save();ctx.lineWidth=2;ctx.globalAlpha=.55;
+      ctx.beginPath();ctx.moveTo(position.x-half-10,support);ctx.lineTo(position.x+half+10,support);
+      ctx.moveTo(position.x-5,support);ctx.lineTo(position.x-5,top);
+      ctx.moveTo(position.x+5,support);ctx.lineTo(position.x+5,top);ctx.stroke();ctx.restore();
+    }
     ctx.beginPath();ctx.moveTo(position.x-half,position.y);ctx.lineTo(position.x-half,top);
     ctx.lineTo(position.x+half,top);ctx.lineTo(position.x+half,position.y);if(!seated)ctx.closePath();ctx.fill();ctx.stroke();
+    if(mechanism.appearance==='press'){
+      ctx.save();ctx.globalAlpha=.6;ctx.lineWidth=1.8;ctx.beginPath();
+      for(let x=position.x-half+7;x<position.x+half-3;x+=13){ctx.moveTo(x,top+5);ctx.lineTo(x+6,top+12);}
+      ctx.stroke();ctx.restore();
+    }
   }
 
   // Undrawn structures remain absent; a discreet pencil marker calls the hand.
@@ -221,7 +257,9 @@ export function drawPlatformScene(
     ctx.save();ctx.strokeStyle=active?palette.accent:palette.ink;ctx.globalAlpha=active?.85:.35;
     ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(checkpoint.x,checkpoint.y);ctx.lineTo(checkpoint.x,checkpoint.y-45);
-    ctx.lineTo(checkpoint.x+18,checkpoint.y-39);ctx.lineTo(checkpoint.x,checkpoint.y-31);ctx.stroke();
+    const ripple=options.reducedMotion?0:Math.sin(world.time*2.3+checkpoint.x)*2;
+    ctx.quadraticCurveTo(checkpoint.x+9,checkpoint.y-43+ripple,checkpoint.x+18,checkpoint.y-39);
+    ctx.quadraticCurveTo(checkpoint.x+9,checkpoint.y-33-ripple,checkpoint.x,checkpoint.y-31);ctx.stroke();
     ctx.restore();
   }
 
@@ -229,14 +267,16 @@ export function drawPlatformScene(
     const p=getWorldHazardPosition(world,level,hazard);
     if(p.x<options.cameraX-180 || p.x>options.cameraX+options.viewWidth+180)continue;
     if(hazard.type==='gear') {
-      if(hazard.axis && hazard.range && !mechanisms.some(view=>view.mechanism.type==='gear'&&view.mechanism.hazardId===hazard.id)) {
+      if(hazard.motion!=='swing'&&hazard.axis && hazard.range && !mechanisms.some(view=>view.mechanism.type==='gear'&&view.mechanism.hazardId===hazard.id)) {
         ctx.save();ctx.globalAlpha=.2;ctx.strokeStyle=palette.ink;ctx.lineWidth=1.5;ctx.setLineDash([3,7]);
         ctx.beginPath();
         if(hazard.axis==='y'){ctx.moveTo(hazard.x,hazard.y-hazard.range);ctx.lineTo(hazard.x,hazard.y+hazard.range);}
         else{ctx.moveTo(hazard.x-hazard.range,hazard.y);ctx.lineTo(hazard.x+hazard.range,hazard.y);}
         ctx.stroke();ctx.restore();
       }
-      gear(ctx,p.x,p.y,hazard.r,world.time*2.4+(hazard.phase??0),palette.ink,palette.background);
+      if(hazard.appearance==='pendulum')pendulum(ctx,{x:hazard.x,y:hazard.y-(hazard.armLength??150)},p,hazard.r,palette.ink,palette.background);
+      else if(hazard.appearance==='saw')saw(ctx,p.x,p.y,hazard.r,world.time*2.4+(hazard.phase??0),palette.ink,palette.background);
+      else gear(ctx,p.x,p.y,hazard.r,world.time*2.4+(hazard.phase??0),palette.ink,palette.background);
     } else {
       ctx.save();ctx.strokeStyle=palette.ink;ctx.lineWidth=STROKE;
       const count=Math.max(2,Math.round(hazard.w/20));
@@ -260,15 +300,16 @@ export function drawPlatformScene(
 
   for(const {mechanism,position,handle,held} of mechanisms) {
     if(handle.x<options.cameraX-70||handle.x>options.cameraX+options.viewWidth+70)continue;
-    const hovered=!!options.pointer&&Math.hypot(options.pointer.x-handle.x,options.pointer.y-handle.y)<25;
+    const scale=Math.max(.25,options.pixelScale??1),handleRadius=Math.max(11,Math.min(28,14/scale));
+    const hovered=!!options.pointer&&Math.hypot(options.pointer.x-handle.x,options.pointer.y-handle.y)<Math.max(25,24/scale);
     ctx.save();ctx.strokeStyle=palette.accent;ctx.fillStyle=palette.background;ctx.lineWidth=2.7;
     if(mechanism.type==='platform') {
       ctx.beginPath();ctx.moveTo(handle.x,handle.y+10);ctx.lineTo(position.x,position.y);ctx.stroke();
     }
-    ctx.beginPath();ctx.arc(handle.x,handle.y,held?13:11,0,TAU);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(handle.x,handle.y,handleRadius+(held?2:0),0,TAU);ctx.fill();ctx.stroke();
     ctx.fillStyle=palette.accent;
     ctx.beginPath();ctx.arc(handle.x,handle.y,3,0,TAU);ctx.fill();
-    if(held||hovered){ctx.globalAlpha=held?.7:.4;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(handle.x,handle.y,18,0,TAU);ctx.stroke();}
+    if(held||hovered){ctx.globalAlpha=held?.7:.4;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(handle.x,handle.y,handleRadius+7,0,TAU);ctx.stroke();}
     ctx.restore();
   }
 

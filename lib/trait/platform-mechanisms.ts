@@ -1,5 +1,5 @@
 import type { GameWorld, PlatformHazard, PlatformLevel, PlatformPoint, PlatformSurface } from './platformer';
-import { getPlayerHeight } from './platformer';
+import { getHazardPosition, getPlayerHeight, playerTouchesHazard } from './platformer';
 
 /** Rail endpoints are a platform's top centre, a gate's bottom centre, or a gear's centre. */
 type MechanismBase = {
@@ -14,10 +14,10 @@ type MechanismBase = {
 };
 export type PlatformMechanism =
   | (MechanismBase & { type: 'platform' })
-  | (MechanismBase & { type: 'gate'; height: number })
+  | (MechanismBase & { type: 'gate'; height: number; appearance?: 'door' | 'press' })
   | (MechanismBase & { type: 'gear'; hazardId: string });
-export type MechanismState = { progress: number; target: number };
-export type HandInteraction = { id: string; source: 'pointer' | 'keyboard'; point: PlatformPoint };
+export type MechanismState = { progress: number; target: number; pendingSettle?: boolean };
+export type HandInteraction = { id: string; source: 'pointer'; point: PlatformPoint; grabOffset?: PlatformPoint; startProgress?: number };
 export type MechanismResult = { ok: boolean; message: string; id?: string };
 export type MechanismView = { mechanism: PlatformMechanism; position: PlatformPoint; handle: PlatformPoint; progress: number; held: boolean };
 
@@ -55,9 +55,7 @@ export function getMechanismPositions(world: GameWorld, level: PlatformLevel): M
 export function getWorldHazardPosition(world: GameWorld, level: PlatformLevel, hazard: PlatformHazard): PlatformPoint {
   const carrier = (level.mechanisms ?? []).find(m => m.type === 'gear' && m.hazardId === hazard.id);
   if (carrier) return getMechanismPosition(world, carrier);
-  if (hazard.type !== 'gear' || !hazard.axis || !hazard.range) return { x: hazard.x, y: hazard.y };
-  const offset = Math.sin(world.time * (hazard.speed ?? 1.3) + (hazard.phase ?? 0)) * hazard.range;
-  return { x: hazard.x + (hazard.axis === 'x' ? offset : 0), y: hazard.y + (hazard.axis === 'y' ? offset : 0) };
+  return getHazardPosition(hazard, world.time);
 }
 
 export function getMechanismSurfaces(world: GameWorld, level: PlatformLevel): PlatformSurface[] {
@@ -86,9 +84,9 @@ export function getAvailableMechanism(world: GameWorld, level: PlatformLevel): P
   return nearest;
 }
 
-export function beginMechanismInteraction(world: GameWorld, level: PlatformLevel, point: PlatformPoint): MechanismResult {
+export function beginMechanismInteraction(world: GameWorld, level: PlatformLevel, point: PlatformPoint, anchorRadius = 34): MechanismResult {
   if (world.phase !== 'playing' || !finitePoint(point)) return { ok: false, message: 'Reprends la traversée pour saisir une poignée.' };
-  let nearest: PlatformMechanism | null = null, best = 34;
+  let nearest: PlatformMechanism | null = null, best = Number.isFinite(anchorRadius) ? Math.max(12, Math.min(72, anchorRadius)) : 34;
   for (const mechanism of level.mechanisms ?? []) {
     const handle = getMechanismHandlePosition(world, mechanism);
     const distance = Math.hypot(point.x - handle.x, point.y - handle.y);
@@ -97,8 +95,10 @@ export function beginMechanismInteraction(world: GameWorld, level: PlatformLevel
   if (!nearest) return { ok: false, message: 'Saisis une poignée dorée.' };
   const state = world.mechanisms[nearest.id];
   if (!state) return { ok: false, message: 'Cette poignée ne répond pas.' };
+  endMechanismInteraction(world);
   state.target = state.progress;
-  world.handInteraction = { id: nearest.id, source: 'pointer', point: { ...point } };
+  const handle = getMechanismHandlePosition(world, nearest);
+  world.handInteraction = { id: nearest.id, source: 'pointer', point: { ...point }, grabOffset: { x: point.x - handle.x, y: point.y - handle.y }, startProgress: state.progress };
   return { ok: true, message: nearest.prompt, id: nearest.id };
 }
 
@@ -108,23 +108,25 @@ export function moveMechanismInteraction(world: GameWorld, level: PlatformLevel,
   if (!mechanism) return;
   const position = getMechanismPosition(world, mechanism), handle = getMechanismHandlePosition(world, mechanism);
   // Account for the visible handle's offset: grabbing it never shifts the object suddenly.
-  const anchorPoint = { x: point.x - (handle.x - position.x), y: point.y - (handle.y - position.y) };
-  world.mechanisms[mechanism.id].target = railFraction(mechanism, anchorPoint);
+  const grab = world.handInteraction.grabOffset ?? { x: 0, y: 0 };
+  const anchorPoint = { x: point.x - grab.x - (handle.x - position.x), y: point.y - grab.y - (handle.y - position.y) };
+  const state = world.mechanisms[mechanism.id];
+  state.target = railFraction(mechanism, anchorPoint);
   world.handInteraction.point = { ...point };
+  // Follow the finger now, including the last pointer-up sample. Swept steps
+  // retain collision/rider checks even when a browser coalesces a quick drag.
+  const length = Math.hypot(mechanism.to.x - mechanism.from.x, mechanism.to.y - mechanism.from.y);
+  const steps = Math.ceil(Math.abs(state.target - state.progress) * length / 4) + 1;
+  for (let i = 0; i < steps && Math.abs(state.target - state.progress) > .000001; i++) advanceMechanisms(world, level, 0, 4);
 }
 
 export function endMechanismInteraction(world: GameWorld): void {
+  const state = world.handInteraction ? world.mechanisms[world.handInteraction.id] : null;
+  if (state) {
+    if (Math.abs(state.progress - (world.handInteraction?.startProgress ?? state.progress)) > .000001) state.pendingSettle = true;
+    state.target = state.progress;
+  }
   world.handInteraction = null;
-}
-
-export function activateNearestMechanism(world: GameWorld, level: PlatformLevel): MechanismResult {
-  const mechanism = getAvailableMechanism(world, level);
-  if (!mechanism) return { ok: false, message: 'Approche-toi d’une poignée dorée.' };
-  const state = world.mechanisms[mechanism.id];
-  if (!state) return { ok: false, message: 'Cette poignée ne répond pas.' };
-  state.target = state.target >= 0.5 ? 0 : 1;
-  world.handInteraction = { id: mechanism.id, source: 'keyboard', point: getMechanismHandlePosition(world, mechanism) };
-  return { ok: true, message: mechanism.prompt, id: mechanism.id };
 }
 
 /** Keep solved objects where they are, but release the hand and stop queued travel on death. */
@@ -144,14 +146,17 @@ function gearDistanceFromPlayer(world: GameWorld, p: PlatformPoint): number {
 }
 
 /** Advance bounded rails at simulation rate; riding platforms carry feet before the next player step. */
-export function advanceMechanisms(world: GameWorld, level: PlatformLevel, dt: number): boolean {
+export function advanceMechanisms(world: GameWorld, level: PlatformLevel, dt: number, distanceLimit?: number): boolean {
   let settled = false;
   for (const mechanism of level.mechanisms ?? []) {
     const state = world.mechanisms[mechanism.id];
+    if (state?.pendingSettle && distanceLimit === undefined) { settled = true; delete state.pendingSettle; }
+    // A target is a held pointer position, never a queued trip or a button command.
+    if (state && world.handInteraction?.id !== mechanism.id) state.target = state.progress;
     if (!state || Math.abs(state.target - state.progress) < 0.000001) continue;
     const old = getMechanismPosition(world, mechanism);
     const length = Math.hypot(mechanism.to.x - mechanism.from.x, mechanism.to.y - mechanism.from.y);
-    const step = (mechanism.speed ?? 170) * dt / Math.max(1, length);
+    const step = (distanceLimit ?? (mechanism.speed ?? 640) * dt) / Math.max(1, length);
     let progress = state.progress < state.target ? Math.min(state.target, state.progress + step) : Math.max(state.target, state.progress - step);
     if (Math.abs(progress - state.target) < 0.000001) progress = state.target;
     const next = lerpPoint(mechanism, progress);
@@ -164,7 +169,6 @@ export function advanceMechanisms(world: GameWorld, level: PlatformLevel, dt: nu
         : false;
     if (blocked) {
       state.target = state.progress;
-      if (world.handInteraction?.id === mechanism.id && world.handInteraction.source === 'keyboard') world.handInteraction = null;
       continue;
     }
     const riding = mechanism.type === 'platform' && world.player.grounded
@@ -173,22 +177,18 @@ export function advanceMechanisms(world: GameWorld, level: PlatformLevel, dt: nu
       const shift = { x: next.x - old.x, y: next.y - old.y };
       const shiftedPlayer = { ...world.player, x: world.player.x + shift.x, y: world.player.y + shift.y };
       const collisionWorld = { ...world, player: shiftedPlayer };
-      const obstructed = (level.mechanisms ?? []).some(m => m.type === 'gate' && gateOverlapsPlayer(collisionWorld, m, getMechanismPosition(world, m)));
+      const obstructed = (level.mechanisms ?? []).some(m => m.type === 'gate' && gateOverlapsPlayer(collisionWorld, m, getMechanismPosition(world, m)))
+        || level.hazards.some(hazard => playerTouchesHazard(world, level, shiftedPlayer, hazard));
       if (obstructed) {
         state.target = state.progress;
-        if (world.handInteraction?.id === mechanism.id && world.handInteraction.source === 'keyboard') world.handInteraction = null;
         continue;
       }
       world.player.x = shiftedPlayer.x;
       world.player.y = shiftedPlayer.y;
     }
     state.progress = progress;
-    if (world.handInteraction?.id === mechanism.id && world.handInteraction.source === 'keyboard') {
-      world.handInteraction.point = getMechanismHandlePosition(world, mechanism);
-    }
     if (Math.abs(state.progress - state.target) < 0.000001) {
       settled = true;
-      if (world.handInteraction?.id === mechanism.id && world.handInteraction.source === 'keyboard') world.handInteraction = null;
     }
   }
   return settled;

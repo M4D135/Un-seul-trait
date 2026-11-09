@@ -8,11 +8,27 @@ export type CompanionActing = {
   gesture: CartoonGesture;
   age: number;
   duration: number;
-  /** Changes only when a new reaction starts, useful for a single audio cue. */
+  /** Changes at each acting beat. Only beats carrying speech start a reply. */
   sequence: number;
   target?: PlatformPoint;
   facing?: -1 | 1;
-  speech?: 'waiting' | 'ready' | 'grumble' | 'call' | 'surprise' | 'thanks';
+  speech?: 'waiting' | 'ready' | 'grumble' | 'call' | 'surprise' | 'thanks' | 'win';
+};
+
+type ActingBeat = {
+  gesture: CartoonGesture;
+  duration: number;
+  focus?: 'obstacle' | 'artist';
+  speech?: CompanionActing['speech'];
+};
+
+type ActingScene = {
+  kind: 'protest' | 'danger' | 'touch' | 'thanks';
+  beats: readonly ActingBeat[];
+  index: number;
+  obstacle?: PlatformPoint;
+  artist: PlatformPoint;
+  key?: string;
 };
 
 export type CompanionState = {
@@ -20,7 +36,10 @@ export type CompanionState = {
   acting: CompanionActing;
   blockedFor: number;
   blockedKey: string | null;
-  cue: number;
+  /** Per obstacle cooldowns survive a small step away and back. */
+  protestAfter: Record<string, number>;
+  scene: ActingScene | null;
+  takes: Record<ActingScene['kind'], number>;
   drawnCount: number;
   previousPhase: GameWorld['phase'];
   pointerNear: boolean;
@@ -34,7 +53,8 @@ export type CompanionState = {
 export function createCompanionState(world: GameWorld): CompanionState {
   return {
     time: 0, acting: { gesture: 'none', age: 0, duration: 0, sequence: 0 },
-    blockedFor: 0, blockedKey: null, cue: 0, drawnCount: world.drawn.length,
+    blockedFor: 0, blockedKey: null, protestAfter: {}, scene: null,
+    takes: { protest: 0, danger: 0, touch: 0, thanks: 0 }, drawnCount: world.drawn.length,
     previousPhase: world.phase, pointerNear: false, touchAfter: 0,
     dangerKey: null, dangerAfter: 0, heldId: null, heldFrom: 0,
   };
@@ -43,17 +63,120 @@ export function createCompanionState(world: GameWorld): CompanionState {
 const DURATION: Record<CartoonGesture, number> = {
   none: 0, peek: .65, point: 1.1, call: 1.05, impatient: 1.15,
   delighted: 1.25, curious: .9, angry: .85, settle: .24,
+  listen: .55, shrug: 1.25, explain: 1.2, recoil: .65, acknowledge: .65,
 };
+
+/**
+ * The original exchanges are held drawings with changes of intention:
+ * inspect the missing line, address the cartoonist, demonstrate, listen,
+ * complain. Silent beats matter as much as the calls. These three takes
+ * avoid performing the same pantomime at every new gap.
+ */
+const PROTEST_TAKES: readonly (readonly ActingBeat[])[] = [
+  [
+    { gesture: 'peek', duration: .65, focus: 'obstacle' },
+    { gesture: 'listen', duration: .45, focus: 'artist' },
+    { gesture: 'call', duration: 1.05, focus: 'artist', speech: 'call' },
+    { gesture: 'point', duration: .75, focus: 'obstacle' },
+    { gesture: 'shrug', duration: 1.25, focus: 'artist', speech: 'grumble' },
+    { gesture: 'listen', duration: .65, focus: 'artist' },
+    { gesture: 'angry', duration: 1.05, focus: 'artist', speech: 'waiting' },
+    { gesture: 'impatient', duration: .7, focus: 'artist' },
+  ],
+  [
+    { gesture: 'peek', duration: .5, focus: 'obstacle' },
+    { gesture: 'point', duration: 1.05, focus: 'obstacle', speech: 'call' },
+    { gesture: 'explain', duration: .7, focus: 'artist' },
+    { gesture: 'listen', duration: .5, focus: 'artist' },
+    { gesture: 'angry', duration: 1.2, focus: 'artist', speech: 'grumble' },
+    { gesture: 'shrug', duration: .7, focus: 'artist' },
+    { gesture: 'impatient', duration: 1.05, focus: 'artist', speech: 'waiting' },
+    { gesture: 'listen', duration: .45, focus: 'artist' },
+  ],
+  [
+    { gesture: 'peek', duration: .5, focus: 'obstacle' },
+    { gesture: 'shrug', duration: 1.05, focus: 'artist', speech: 'call' },
+    { gesture: 'point', duration: .7, focus: 'obstacle' },
+    { gesture: 'listen', duration: .5, focus: 'artist' },
+    { gesture: 'explain', duration: 1.3, focus: 'artist', speech: 'grumble' },
+    { gesture: 'impatient', duration: .7, focus: 'artist' },
+    { gesture: 'call', duration: 1.05, focus: 'artist', speech: 'waiting' },
+    { gesture: 'listen', duration: .45, focus: 'artist' },
+  ],
+];
+
+const TOUCH_TAKES: readonly (readonly ActingBeat[])[] = [
+  [{ gesture: 'curious', duration: .9, focus: 'artist', speech: 'surprise' },
+    { gesture: 'listen', duration: .45, focus: 'artist' }],
+  [{ gesture: 'recoil', duration: .75, focus: 'artist', speech: 'surprise' },
+    { gesture: 'impatient', duration: .65, focus: 'artist' }],
+  [{ gesture: 'shrug', duration: 1.05, focus: 'artist', speech: 'call' },
+    { gesture: 'acknowledge', duration: .5, focus: 'artist' }],
+];
+
+const THANKS_TAKES: readonly (readonly ActingBeat[])[] = [
+  [{ gesture: 'delighted', duration: 1.2, focus: 'artist', speech: 'thanks' },
+    { gesture: 'acknowledge', duration: .55, focus: 'artist' }],
+  [{ gesture: 'acknowledge', duration: 1.05, focus: 'artist', speech: 'thanks' },
+    { gesture: 'delighted', duration: .65, focus: 'artist' }],
+  [{ gesture: 'explain', duration: 1.05, focus: 'artist', speech: 'thanks' },
+    { gesture: 'acknowledge', duration: .65, focus: 'artist' }],
+];
+
+const DANGER_TAKES: readonly (readonly ActingBeat[])[] = [
+  [{ gesture: 'recoil', duration: 1.05, focus: 'obstacle', speech: 'surprise' },
+    { gesture: 'point', duration: .65, focus: 'obstacle' },
+    { gesture: 'angry', duration: 1.15, focus: 'artist', speech: 'grumble' },
+    { gesture: 'impatient', duration: .55, focus: 'artist' }],
+  [{ gesture: 'peek', duration: .55, focus: 'obstacle' },
+    { gesture: 'angry', duration: 1.2, focus: 'artist', speech: 'grumble' },
+    { gesture: 'listen', duration: .65, focus: 'artist' },
+    { gesture: 'shrug', duration: 1.05, focus: 'artist', speech: 'waiting' }],
+];
 
 function start(
   state: CompanionState, world: GameWorld, gesture: CartoonGesture,
   target?: PlatformPoint, speech?: CompanionActing['speech'],
+  duration = DURATION[gesture],
 ) {
   state.acting = {
-    gesture, age: 0, duration: DURATION[gesture], sequence: state.acting.sequence + 1,
+    gesture, age: 0, duration, sequence: state.acting.sequence + 1,
     ...(target ? { target: { ...target }, facing: (target.x < world.player.x - 8 ? -1 : target.x > world.player.x + 8 ? 1 : world.player.facing) as -1 | 1 } : {}),
     ...(speech ? { speech } : {}),
   };
+}
+
+function rest(state: CompanionState) {
+  state.scene = null;
+  state.acting = { gesture: 'none', age: 0, duration: 0, sequence: state.acting.sequence };
+}
+
+function artistTarget(world: GameWorld, pointer?: PlatformPoint | null): PlatformPoint {
+  const p = world.player;
+  // A remote cursor on the map is not the cartoonist. With no nearby hand,
+  // he addresses the space above his shoulder, as in the reference shots.
+  return pointer && Math.hypot(pointer.x - p.x, pointer.y - (p.y - 79)) < 260 && pointer.y < p.y - 25
+    ? { ...pointer } : { x: p.x + p.facing * 65, y: p.y - 205 };
+}
+
+function startBeat(state: CompanionState, world: GameWorld) {
+  const scene = state.scene!;
+  const beat = scene.beats[scene.index];
+  const target = beat.focus === 'artist' ? scene.artist : beat.focus === 'obstacle' ? scene.obstacle : undefined;
+  start(state, world, beat.gesture, target, beat.speech, beat.duration);
+}
+
+function startScene(
+  state: CompanionState, world: GameWorld, kind: ActingScene['kind'],
+  takes: readonly (readonly ActingBeat[])[],
+  pointer?: PlatformPoint | null, obstacle?: PlatformPoint, key?: string,
+) {
+  const take = state.takes[kind]++;
+  const beats = takes[take % takes.length];
+  state.scene = { kind, beats, index: 0, artist: artistTarget(world, pointer),
+    ...(obstacle ? { obstacle: { ...obstacle } } : {}), ...(key ? { key } : {}) };
+  startBeat(state, world);
+  return beats.reduce((duration, beat) => duration + beat.duration, 0);
 }
 
 function needHelp(world: GameWorld, level: PlatformLevel): { key: string; target: PlatformPoint; edge: boolean } | null {
@@ -99,7 +222,10 @@ export function updateCompanion(
   state.time += step;
   state.acting.age += step;
   if (state.acting.age >= state.acting.duration) {
-    state.acting = { gesture: 'none', age: 0, duration: 0, sequence: state.acting.sequence };
+    if (state.scene && state.scene.index + 1 < state.scene.beats.length) {
+      state.scene.index++;
+      startBeat(state, world);
+    } else rest(state);
   }
   const p = world.player, events = options.events ?? [];
   const held = world.handInteraction?.id ?? null;
@@ -116,29 +242,23 @@ export function updateCompanion(
   state.drawnCount = world.drawn.length;
 
   if (world.phase === 'dead') {
-    state.acting = { gesture: 'none', age: 0, duration: 0, sequence: state.acting.sequence };
+    rest(state);
     state.blockedKey = null; state.blockedFor = 0; state.previousPhase = world.phase;
     return state.acting;
   }
-  if (assisted || (world.phase === 'won' && state.previousPhase !== 'won')) {
-    start(state, world, 'delighted', options.pointer ?? undefined, 'thanks');
-    state.blockedFor = 0; state.cue = 0;
-  } else if (events.includes('land') && state.acting.gesture === 'none') {
-    start(state, world, 'settle');
-  } else if (beganHolding && state.acting.gesture === 'none') {
-    const handle=getMechanismPositions(world,level).find(view=>view.mechanism.id===held)?.handle;
-    start(state, world, 'peek', handle);
-  }
+  const won = world.phase === 'won' && state.previousPhase !== 'won';
+  const celebrating = assisted || won;
   state.previousPhase = world.phase;
+
+  const locomotion = !p.grounded || p.crouching || Math.abs(p.vx) >= 8;
+  // A player action cancels the remaining conversation. It must never start
+  // again halfway through after walking or ducking out of the pose.
+  if (locomotion || ((held || world.phase === 'drawing') && state.scene?.kind !== 'thanks' && state.scene)) rest(state);
 
   const headHeight = p.crouching ? 43 : 79;
   const nearHead = !!options.pointer && Math.hypot(options.pointer.x - p.x, options.pointer.y - (p.y - headHeight)) < 48;
-  if (options.touched && nearHead && state.time >= state.touchAfter && world.phase !== 'won') {
-    start(state, world, 'curious', options.pointer ?? undefined, 'surprise');
-    state.touchAfter = state.time + 1.8;
-  } else if (nearHead && !state.pointerNear && Math.abs(p.vx) < 8 && state.acting.gesture === 'none') {
-    start(state, world, 'peek', options.pointer ?? undefined);
-  }
+  const touched = options.touched && nearHead && state.time >= state.touchAfter && world.phase !== 'won';
+  const noticedPointer = nearHead && !state.pointerNear;
   state.pointerNear = nearHead;
 
   const danger = world.phase === 'playing' && p.grounded ? level.hazards.find(hazard => {
@@ -148,35 +268,43 @@ export function updateCompanion(
     return (x - p.x) * p.facing > -15 && (x - p.x) * p.facing < radius + 98
       && Math.abs(position.y - (p.y - (p.crouching ? 22 : 34))) < (hazard.type === 'gear' ? radius + 56 : hazard.h + 55);
   }) : undefined;
-  if (danger && state.dangerKey !== danger.id && state.time >= state.dangerAfter
-    && state.acting.gesture !== 'delighted' && state.acting.gesture !== 'curious') {
-    start(state, world, 'angry', getWorldHazardPosition(world, level, danger), 'grumble');
-    state.dangerAfter = state.time + 4;
-  }
-  state.dangerKey = danger?.id ?? null;
+  const noticedDanger = danger && state.dangerKey !== danger.id && state.time >= state.dangerAfter;
+  // Keep the approach eligible until he actually has a chance to react at rest.
+  if (!locomotion) state.dangerKey = danger?.id ?? null;
 
   const need = world.phase === 'won' ? null : needHelp(world, level);
-  const waiting = !!need && Math.abs(p.vx) < 8 && !held;
+  const waiting = !!need && !locomotion && !held && world.phase === 'playing';
   if (need?.key !== state.blockedKey || !waiting) {
-    state.blockedKey = need?.key ?? null; state.blockedFor = 0; state.cue = 0;
+    state.blockedKey = need?.key ?? null; state.blockedFor = 0;
   } else state.blockedFor += step;
 
-  if (need && state.acting.gesture === 'none') {
-    // A short glance can anticipate an edge while the player keeps moving.
-    // Large gestures are only selected after stopping; the renderer also
-    // makes locomotion take precedence over every reaction.
-    if (!waiting && need.edge && state.cue === 0) {
-      start(state, world, 'peek', need.target); state.cue = 1;
-    } else if (waiting) {
-      const thresholds = [.35, 1.7, 4.2, 8, 17];
-      const threshold = thresholds[Math.min(state.cue, thresholds.length - 1)] + Math.max(0, state.cue - 4) * 12;
-      if (state.blockedFor >= threshold) {
-        const gesture: CartoonGesture = state.cue === 0 ? (need.edge ? 'peek' : 'point')
-          : state.cue === 1 ? 'point' : state.cue === 2 ? 'call' : 'impatient';
-        start(state, world, gesture, need.target, gesture === 'call' ? 'call' : gesture === 'impatient' ? 'grumble' : undefined);
-        state.cue++;
-      }
-    }
+  if (state.scene?.kind === 'protest' && (!waiting || need?.key !== state.scene.key)) rest(state);
+
+  if (celebrating) {
+    startScene(state, world, 'thanks', THANKS_TAKES, options.pointer);
+    if (won) state.acting.speech = 'win';
+    state.blockedFor = 0;
+  } else if (touched) {
+    startScene(state, world, 'touch', TOUCH_TAKES, options.pointer);
+    state.touchAfter = state.time + 2.4;
+  } else if (noticedDanger && !locomotion && !held && world.phase === 'playing' && !state.scene) {
+    startScene(state, world, 'danger', DANGER_TAKES, options.pointer, getWorldHazardPosition(world, level, danger));
+    state.dangerAfter = state.time + 7;
+  } else if (beganHolding) {
+    const handle = getMechanismPositions(world, level).find(view => view.mechanism.id === held)?.handle;
+    start(state, world, 'peek', handle);
+  } else if (events.includes('land') && !locomotion && !state.scene && state.acting.gesture === 'none') {
+    start(state, world, 'settle');
+  } else if (noticedPointer && !locomotion && !state.scene && state.acting.gesture === 'none') {
+    start(state, world, 'listen', options.pointer ?? undefined);
+  }
+
+  if (need && waiting && !state.scene && state.acting.gesture === 'none'
+    && state.blockedFor >= .45 && state.time >= (state.protestAfter[need.key] ?? 0)) {
+    const duration = startScene(state, world, 'protest', PROTEST_TAKES, options.pointer, need.target, need.key);
+    // One exchange, then several seconds of calm. Neither a still cursor nor
+    // tapping movement at the same edge restarts the introductory line.
+    state.protestAfter[need.key] = state.time + duration + 8 + state.takes.protest % 3;
   }
   return state.acting;
 }

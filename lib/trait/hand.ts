@@ -1,18 +1,21 @@
 type Point = {x: number; y: number};
 
-// Four photographed frames from the original film. See the public provenance manifest.
-// The portable build embeds the same WebP bytes; ordinary hosting uses a relative URL.
-declare const __TRAIT_ORIGINAL_HAND_ASSET__: string | undefined;
+// Authored photographic image, not footage extracted from the original cartoon.
+// The portable build embeds these same WebP bytes; hosting uses a relative URL.
+declare const __TRAIT_HD_HAND_ASSET__: string | undefined;
+
+/** Measured in the genuinely transparent 941 × 1672 image. */
+export const DRAWING_HAND_SOURCE = {width: 941, height: 1672, tipX: 41, tipY: 226} as const;
 
 export type DrawingHandOptions = {
   mode?: 'draw' | 'point' | 'tap';
   /** Choose the entrance side away from the character without moving the pencil point. */
   hero?: Point;
-  /** World-space lower edge, so the photographed wrist always exits the frame. */
+  /** Visible lower edge. The long forearm avoids enlarging the hand on phones. */
   bottom?: number;
 };
 
-/** Original photographed hand, with its pencil point locked to the player's stroke. */
+/** Photographic hand with a fixed pencil pivot and gently articulated wrist. */
 export class DrawingHand {
   private image: HTMLImageElement | null = null;
   private opacity = 0;
@@ -21,7 +24,6 @@ export class DrawingHand {
   private previous: Point | null = null;
   private leaving = 0;
   private elapsed = 0;
-  private filmTime = 0;
   private side = 1;
   private mode: 'draw' | 'point' | 'tap' = 'draw';
 
@@ -29,9 +31,9 @@ export class DrawingHand {
     if (typeof Image !== 'undefined') {
       this.image = new Image();
       this.image.decoding = 'async';
-      this.image.src = typeof __TRAIT_ORIGINAL_HAND_ASSET__ !== 'undefined'
-        ? __TRAIT_ORIGINAL_HAND_ASSET__
-        : new URL('original-hand-atlas.webp',document.baseURI).href;
+      this.image.src = typeof __TRAIT_HD_HAND_ASSET__ !== 'undefined'
+        ? __TRAIT_HD_HAND_ASSET__
+        : new URL('drawing-hand-hd.webp',document.baseURI).href;
     }
   }
 
@@ -43,17 +45,17 @@ export class DrawingHand {
       if (!this.previous) {
         this.side=options.hero&&options.hero.x>tip.x+24?-1:1;
         this.elapsed=0;
+        this.angle=0;
         // A new gesture enters at its new point instead of dragging the forearm across the hero.
         if(this.last&&Math.hypot(tip.x-this.last.x,tip.y-this.last.y)>120)this.opacity=0;
       }
       this.elapsed+=dt;
       if (this.previous) {
         const dx = tip.x - this.previous.x, dy = tip.y - this.previous.y;
-        if (Math.hypot(dx, dy) > .2) {
-          this.filmTime += dt;
-          const wanted = Math.max(-.055, Math.min(.055, Math.atan2(dy, Math.max(6, Math.abs(dx))) * .055));
-          this.angle += (wanted - this.angle) * Math.min(1, dt * 14);
-        }
+        const wanted = Math.hypot(dx, dy) > .2
+          ? Math.max(-.055, Math.min(.055, Math.atan2(dy, Math.max(6, Math.abs(dx))) * .055))
+          : 0;
+        this.angle += (wanted - this.angle) * (1 - Math.exp(-dt * 12));
       }
       // Contact uses the actual stroke endpoint. Only the wrist angle is eased.
       this.last = { ...tip };
@@ -68,23 +70,20 @@ export class DrawingHand {
     if (!this.last || this.opacity <= 0 || !this.image?.complete || !this.image.naturalWidth) return;
     const lift = tip ? 0 : Math.min(1, this.leaving * 4);
     ctx.save();
-    ctx.globalAlpha = this.opacity;
-    ctx.translate(this.last.x + this.side*lift*82,this.last.y + lift*52);
-    const touch=mode==='tap'?Math.sin(Math.min(1,this.elapsed/.32)*Math.PI)*.045:0;
-    const arrival=(1-this.opacity)*.045;
-    const rotation=.2+(reducedMotion?0:this.angle+lift*.08+arrival+touch);
+    ctx.globalAlpha *= this.opacity;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.translate(this.last.x + this.side*lift*60,this.last.y + lift*70);
+    const touch=mode==='tap'?Math.sin(Math.min(1,this.elapsed/.32)*Math.PI)*.025:0;
+    const arrival=(1-this.opacity)*.035;
+    const rotation=.12+(reducedMotion?0:this.angle+lift*.06+arrival+touch);
     ctx.rotate(this.side*rotation);
     ctx.scale(this.side,1);
-    // These are the earliest source-frame cut edges across all four poses,
-    // relative to the measured (16,16) pencil tip. Mirroring leaves their y
-    // projection unchanged. Scale only as far as necessary to hide those cuts.
-    const cutDepth=Math.min(...[[272,224],[110,240],[268,224],[125,256]].map(([x,y])=>x*Math.sin(rotation)+y*Math.cos(rotation)));
-    const needed=(options.bottom??this.last.y+340)-this.last.y+24;
-    const magnification=Math.max((mode==='draw'?560:500)/304,needed/cutDepth);
-    const size=304*magnification;
-    const order=[0,1,2,3,2,1];
-    const frame=reducedMotion?0:order[Math.floor(this.filmTime*25)%order.length];
-    ctx.drawImage(this.image,frame*304,0,304,304,-16*magnification,-16*magnification,size,size);
+    // The long source forearm provides the overscan. Scaling by viewport height
+    // made the old 304 px film cutout enormous on tall phones.
+    const width=mode==='draw'?520:480;
+    const magnification=width/DRAWING_HAND_SOURCE.width;
+    ctx.drawImage(this.image,-DRAWING_HAND_SOURCE.tipX*magnification,-DRAWING_HAND_SOURCE.tipY*magnification,width,DRAWING_HAND_SOURCE.height*magnification);
     ctx.restore();
   }
 
@@ -95,7 +94,6 @@ export class DrawingHand {
     this.angle = 0;
     this.leaving = 0;
     this.elapsed = 0;
-    this.filmTime = 0;
     this.side = 1;
     this.mode = 'draw';
   }

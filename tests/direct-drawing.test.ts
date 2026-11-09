@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  activateNearestMechanism, appendPlayerStroke, beginPlayerStroke, cancelPlayerDrawing,
-  createWorld, finishPlayerStroke, getWorldSurfaces, resetPlayerStroke, updateWorld,
+  appendPlayerStroke, beginMechanismInteraction, beginPlayerStroke, cancelPlayerDrawing,
+  createWorld, finishPlayerStroke, getMechanismHandlePosition, getWorldSurfaces, moveMechanismInteraction, resetPlayerStroke, updateWorld,
   type GameWorld, type PlatformPoint,
 } from '../lib/trait/platformer';
 import { PLATFORM_LEVELS } from '../lib/trait/platform-levels';
@@ -29,6 +29,11 @@ function assertUntouched(world: GameWorld, point: PlatformPoint, radius?: number
   assert.equal(beginPlayerStroke(world, level, point, radius).ok, false);
   assert.deepEqual(world, before);
 }
+function holdHandle(world: GameWorld) {
+  const mechanism = level.mechanisms![0], handle = getMechanismHandlePosition(world, mechanism);
+  assert(beginMechanismInteraction(world, level, handle).ok);
+  moveMechanismInteraction(world, level, { x: handle.x + mechanism.to.x - mechanism.from.x, y: handle.y + mechanism.to.y - mechanism.from.y });
+}
 
 test('pressing either anchor starts and completes a freehand passage in one gesture without E', () => {
   for (const reversed of [false, true]) {
@@ -54,7 +59,7 @@ test('pressing either anchor starts and completes a freehand passage in one gest
 test('missed anchors leave the entire world unchanged and touch tolerance stays bounded', () => {
   const world = nearBank();
   world.player.vx = 120;
-  assert(activateNearestMechanism(world, level).ok);
+  holdHandle(world);
   assertUntouched(world, { x: (a.x + b.x) / 2, y: a.y });
   assertUntouched(world, { x: Number.NaN, y: a.y });
   assertUntouched(world, level.drawings[1].path[0]);
@@ -102,7 +107,7 @@ test('direct redrawing retains the old passage until a replacement is valid', ()
 
 test('the optional keyboard entry still opens an empty draft and supports the same gesture', () => {
   const world = nearBank(); world.player.vx = 100;
-  assert(activateNearestMechanism(world, level).ok);
+  holdHandle(world);
   const time = world.time;
   assert(updateWorld(world, level, { ...idle, draw: true }, 1 / 60).includes('draw-start'));
   assert.equal(world.phase, 'drawing');

@@ -1,4 +1,4 @@
-export const ACTION_IDS = ['left', 'right', 'crouch', 'draw', 'interact', 'pause', 'restart'] as const;
+export const ACTION_IDS = ['left', 'right', 'crouch', 'stand', 'draw', 'pause', 'restart'] as const;
 export type ActionId = typeof ACTION_IDS[number];
 export type KeyBindings = Record<ActionId, [string | null, string | null]>;
 
@@ -6,8 +6,8 @@ export const ACTION_LABELS: Record<ActionId, string> = {
   left: 'Aller à gauche',
   right: 'Aller à droite',
   crouch: 'Se baisser',
+  stand: 'Se redresser',
   draw: 'Dessiner un passage',
-  interact: 'Manipuler une poignée',
   pause: 'Pause / reprendre',
   restart: 'Revenir au drapeau',
 };
@@ -17,8 +17,8 @@ export const DEFAULT_BINDINGS: KeyBindings = {
   left: ['ArrowLeft', 'q'],
   right: ['ArrowRight', 'd'],
   crouch: ['ArrowDown', 's'],
+  stand: ['ArrowUp', 'z'],
   draw: ['e', null],
-  interact: ['f', 'Enter'],
   pause: ['p', 'Escape'],
   restart: ['r', null],
 };

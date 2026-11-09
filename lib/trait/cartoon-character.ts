@@ -10,11 +10,12 @@
  * right. Copying that silhouette as a rightward walk would make him walk
  * backwards. Keep the original pose order and reflect the whole drawing,
  * rather than reversing time or turning the head independently of the legs.
- * No video frames, original audio or raster character assets ship.
+ * These silhouettes remain vector paths, with no raster character frames.
  */
 
 export type CartoonMotion = 'idle' | 'walk' | 'crouch' | 'crouch-walk' | 'fall' | 'grumpy' | 'happy';
-export type CartoonGesture = 'none' | 'peek' | 'point' | 'call' | 'impatient' | 'delighted' | 'curious' | 'angry' | 'settle';
+export type CartoonGesture = 'none' | 'peek' | 'point' | 'call' | 'impatient' | 'delighted' | 'curious' | 'angry' | 'settle'
+  | 'listen' | 'shrug' | 'explain' | 'recoil' | 'acknowledge';
 
 export type CartoonCharacterState = {
   /** World position at the middle of the character's ground baseline. */
@@ -324,9 +325,14 @@ function joyFront(ctx: CanvasRenderingContext2D) {
  */
 function traceActing(
   ctx: CanvasRenderingContext2D, gesture: CartoonGesture, age: number,
-  mouth: number, look: number, reducedMotion: boolean,
+  mouth: number, look: number, reducedMotion: boolean, duration = 1.1,
 ) {
-  const beat = reducedMotion ? 1 : age < .34 ? 0 : age < .78 ? 1 : 2;
+  // Anticipation, a held drawing, then release. A long complaint should not
+  // cycle its arms at speech-syllable speed. Only the recorded voice opens
+  // the jaw; quiet listening remains visibly quiet.
+  const length = Math.max(.24, duration);
+  const beat = reducedMotion ? 1 : age < Math.min(.2, length * .24) ? 0 : age >= length - Math.min(.22, length * .25) ? 2 : 1;
+  const emphasis = reducedMotion ? 0 : Math.round(mouth / 4) * .018;
   const pose: ActingHead = { dx: 0, dy: 0, tilt: look * .18, mouth };
   if (gesture === 'peek') {
     pose.dx = 27; pose.dy = 28; pose.tilt = look < -.3 ? -.1 : .25;
@@ -344,13 +350,55 @@ function traceActing(
     actingHead(ctx, pose);
     lineThrough(ctx, [[270, 181], [269, 209], [deep ? 292 : 279, 232], [264, BASELINE]]);
   } else if (gesture === 'call' && beat === 0) {
-    pose.tilt = -.32; pose.mouth = Math.max(mouth, 8);
+    pose.tilt = -.25 - emphasis; pose.mouth = mouth * 1.25;
     openBack(ctx); actingHead(ctx, pose); openFront(ctx);
   } else if (gesture === 'call' || gesture === 'angry') {
     const fists = gesture === 'angry' && beat !== 2;
-    pose.tilt = fists ? -.12 : -.3;
-    pose.mouth = Math.max(mouth, beat === 1 ? 15 : 7);
+    pose.tilt = fists ? -.12 - emphasis : -.38 - emphasis;
+    pose.dx = beat === 1 ? -3 : 0; pose.dy = beat === 1 ? -2 : 0;
+    pose.mouth = mouth * 1.45;
     raisedBack(ctx, fists); actingHead(ctx, pose); raisedFront(ctx, fists);
+  } else if (gesture === 'shrug') {
+    // Series 200, 3.6–4.8 s: both palms out, elbows below the head,
+    // profile drawn up toward the unseen cartoonist, feet still the floor.
+    pose.tilt = (beat === 1 ? -.2 : -.08) - emphasis;
+    pose.dx = beat === 1 ? 5 : 0;
+    pose.mouth = mouth * 1.2;
+    openBack(ctx); actingHead(ctx, pose); openFront(ctx);
+  } else if (gesture === 'listen') {
+    pose.tilt = look < -.25 ? -.3 : -.07;
+    pose.dy = -2;
+    backAtRest(ctx); actingHead(ctx, pose);
+    // A low, relaxed hand on the belly distinguishes this pause from a
+    // clenched hands-on-hips rebuke. There is no independent interior arm.
+    lineThrough(ctx, [[269, 154], [277, 177], [275, 192], [282, 196],
+      [281, 201], [274, 202], [279, 207], [274, 212], [269, 209]]);
+    finishTorso(ctx);
+  } else if (gesture === 'explain') {
+    pose.tilt = -.16 - emphasis;
+    pose.mouth = mouth * 1.25;
+    if (beat === 1) openBack(ctx); else backAtRest(ctx);
+    actingHead(ctx, pose);
+    if (beat === 2) {
+      lineThrough(ctx, [[267, 149], [299, 167], [326, 157], [337, 159], [349, 170]]);
+      ctx.quadraticCurveTo(351, 177, 344, 175);
+      lineThrough(ctx, [[334, 167], [341, 180]]);
+      ctx.quadraticCurveTo(340, 187, 334, 182);
+      lineThrough(ctx, [[326, 170], [330, 184]]);
+      ctx.quadraticCurveTo(326, 190, 322, 183);
+      lineThrough(ctx, [[317, 174], [296, 190], [270, 177]]);
+    } else palmUp(ctx);
+    finishTorso(ctx);
+  } else if (gesture === 'recoil') {
+    pose.dx = -10; pose.dy = beat === 0 ? 7 : 3;
+    pose.tilt = -.42 - emphasis; pose.mouth = mouth * 1.4;
+    raisedBack(ctx, beat === 2); actingHead(ctx, pose); raisedFront(ctx, false);
+  } else if (gesture === 'acknowledge') {
+    pose.dx = beat === 1 ? 7 : 0;
+    pose.dy = beat === 1 ? 8 : 0;
+    pose.tilt = beat === 1 ? .16 : -.08;
+    backAtRest(ctx, pose.dx, pose.dy); actingHead(ctx, pose);
+    palmUp(ctx); finishTorso(ctx);
   } else if (gesture === 'point') {
     pose.tilt = look < -.25 ? -.27 : -.08;
     backAtRest(ctx); actingHead(ctx, pose);
@@ -368,8 +416,8 @@ function traceActing(
     }
     finishTorso(ctx);
   } else if (gesture === 'impatient') {
-    pose.tilt = beat === 1 ? -.15 : .04;
-    pose.mouth = Math.max(mouth, beat === 1 ? 10 : 2);
+    pose.tilt = (beat === 1 ? -.15 : .04) - emphasis;
+    pose.mouth = mouth * 1.2;
     ctx.moveTo(214, BASELINE);
     ctx.quadraticCurveTo(223, 235, 220, 211);
     lineThrough(ctx, [[211, 204], [199, 214], [190, 213], [193, 202], [187, 199], [192, 192], [181, 175], [205, 140], [205, 130]]);
@@ -377,7 +425,7 @@ function traceActing(
     lineThrough(ctx, [[273, 150], [298, 175], [289, 201], [277, 207], [271, 201], [281, 194], [270, 195], [268, 213]]);
     finishTorso(ctx);
   } else if (gesture === 'curious') {
-    pose.tilt = -.17; pose.mouth = Math.max(mouth, 4);
+    pose.tilt = -.17; pose.mouth = mouth;
     ctx.moveTo(214, BASELINE);
     ctx.quadraticCurveTo(223, 217, 212, 166);
     lineThrough(ctx, [[176, 180], [180, 146], [168, 143], [163, 136], [170, 130], [179, 131], [181, 120]]);
@@ -388,7 +436,7 @@ function traceActing(
     finishTorso(ctx);
   } else if (gesture === 'delighted') {
     pose.tilt = beat === 0 ? -.18 : -.46;
-    pose.mouth = Math.max(mouth, beat === 1 ? 12 : 5);
+    pose.mouth = mouth * 1.2;
     if (beat === 0) { backAtRest(ctx); actingHead(ctx, pose); palmUp(ctx); finishTorso(ctx); }
     else { joyBack(ctx); actingHead(ctx, pose); joyFront(ctx); }
   } else {
@@ -479,7 +527,8 @@ export function drawCartoonCharacter(ctx: CanvasRenderingContext2D, state: Carto
     case 'fall': traceFall(ctx, mouth); break;
     default: {
       const acting = gesture !== 'none' ? gesture : state.motion === 'grumpy' ? 'impatient' : state.motion === 'happy' ? 'delighted' : 'none';
-      traceActing(ctx, acting, state.motion === 'happy' && gesture === 'none' ? .5 : age, mouth, look, !!state.reducedMotion);
+      traceActing(ctx, acting, state.motion === 'happy' && gesture === 'none' ? .5 : age, mouth, look,
+        !!state.reducedMotion, state.gestureDuration || 1.1);
     }
   }
   // Filling closes the mask; the stroked ground contour remains open.

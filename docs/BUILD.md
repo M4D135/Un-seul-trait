@@ -1,4 +1,4 @@
-# Compilation autonome — version 1.2.0
+# Compilation autonome — version 1.3.0
 
 ## Prérequis
 
@@ -19,7 +19,7 @@ npm run build
 
 L’entrée est `scripts/public-app/main.tsx`. Elle monte directement le composant `app/page.tsx` et importe les mêmes styles que le jeu. La configuration `scripts/public-vite.config.mjs` utilise React et Vite ; elle ne charge pas de framework serveur.
 
-Le build produit `dist/index.html`, ses ressources locales et `dist/offline-play.html`. Le fichier autonome contient le JavaScript, le CSS, le favicon, l’atlas de la main filmée, les courts extraits sonores sélectionnés et les notices de crédit. Les sources intégrales de Quipos et les liens YouTube restent des références externes : le jeu utilise les ressources locales préparées, sans télécharger les épisodes au lancement.
+Le build produit `dist/index.html`, ses ressources locales et `dist/offline-play.html`. Le fichier autonome contient le JavaScript, le CSS, le favicon, la main photographique générée, les courts extraits sonores sélectionnés et les notices de crédit. Les sources intégrales de Quipos et les liens YouTube restent des références externes : le jeu utilise les ressources locales préparées, sans télécharger les épisodes au lancement.
 
 `base: './'` permet de servir le dossier compilé à la racine ou dans un sous-dossier. Pour un hébergement statique, copier **tout le contenu** de `dist/`, y compris les médias et leurs manifestes. Le fichier `.nojekyll` est fourni pour les hébergements compatibles avec cette convention. `npm run preview` sert localement le build sans le modifier.
 
@@ -27,16 +27,16 @@ Le build produit `dist/index.html`, ses ressources locales et `dist/offline-play
 
 | Ressource | Contenu |
 | --- | --- |
-| `public/original-hand-atlas.webp` | Atlas transparent de quatre images de la main, préparé à partir de l’extrait officiel 100 |
-| `public/original-hand-manifest.json` | URL source, minutages, rectangles des images, cadence et ancre de la pointe |
-| `public/original-voice.wav` | Trois courts extraits sonores réunis dans un fichier PCM mono |
-| `public/original-voice-manifest.json` | Sources, durées, positions des extraits dans le WAV et empreinte du fichier |
+| `public/drawing-hand-hd.webp` | Image transparente de main et d’avant-bras au rendu photographique, générée pour le jeu |
+| `public/drawing-hand-hd-manifest.json` | Prompt exact, provenance, résolution réelle, empreinte et ancre de la pointe |
+| `public/original-voice.wav` | Seize courts fragments de bande sonore originale, réunis en PCM mono |
+| `public/original-voice-manifest.json` | Sources, minutages, durées, empreintes des découpes et positions dans le WAV |
 
-L’atlas de la main mesure **1 216 × 304 pixels**, avec une rangée de quatre cellules de **304 × 304 pixels**. La pointe du crayon est stabilisée à **(16, 16)** dans chaque cellule. Les quatre images successives, issues de **1,32 s incluse à 1,48 s exclue**, contiennent deux poses photographiques maintenues et correspondent à **0,16 seconde à 25 images par seconde**. Le jeu réutilise ce petit mouvement de poignet et programme le déplacement de la main pour suivre le tracé. Les bords où le poignet est coupé dans la source sont décrits dans le manifeste et doivent sortir du Canvas.
+La main mesure réellement **941 × 1 672 pixels**, avec pointe à **(41, 226)**. Le WebP est sans perte et conserve l’alpha. Le moteur l’utilise à une taille stable et anime le poignet autour de la pointe; il n’agrandit plus automatiquement le bras pour couvrir un téléphone très haut. Il ne s’agit pas de 4K native ni d’une nouvelle capture du dessin animé.
 
-Le fichier audio est un WAV PCM signé 16 bits, mono, à **44 100 Hz**. Il contient **2,68 secondes de son source** et deux séparations silencieuses de 0,12 seconde, pour une durée de fichier de **2,92 secondes**. La conversion en mono conserve la bande sonore des passages sélectionnés. Les détails d’attribution et les limites d’utilisation sont dans [CREDITS.md](../CREDITS.md).
+L’audio est PCM signé 16 bits, mono, **44 100 Hz**. Il contient **11,42 secondes de source**, avec quinze séparations silencieuses de 0,12 seconde, pour **13,22 secondes** au total. Les fragments durent de 0,58 à 0,98 seconde et conservent hauteur, vitesse et accompagnement. La banque exclut les cinq dernières prises. Le fichier chargé par le site porte une clé de version `?v=3` pour éviter l’ancien cache à trois sons.
 
-Les manifestes documentent la provenance et la préparation. Ils sont également inclus dans le fichier HTML autonome et copiés dans le sous-dossier `docs/` du build statique. Ils ne constituent pas des licences de réutilisation des médias.
+La compilation remplace `__TRAIT_HD_HAND_ASSET__` et `__TRAIT_ORIGINAL_AUDIO_ASSET__` par des URLs de données. Le HTML autonome décode donc la main et le WAV localement sans requête média. Les notices et manifestes sont inclus dans ce HTML et copiés dans `docs/` du build. Les origines et limites sont précisées dans [CREDITS.md](../CREDITS.md).
 
 ## Tests et vérification visuelle
 
@@ -44,18 +44,19 @@ Les manifestes documentent la provenance et la préparation. Ils sont également
 
 Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. Ils ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
 
-Pour vérifier l’interface de la version 1.2.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
+Pour vérifier l’interface de la version 1.3.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
 
 - La scène et les commandes restent dans le viewport ; le geste de jeu ne fait pas défiler la page.
-- Les flèches sont à gauche, la flexion et la manipulation à droite ; les boutons restent accessibles avec les zones réservées aux encoches et à la barre d’accueil.
+- Les flèches sont à gauche, baisser et se redresser à droite ; les boutons restent accessibles avec les zones réservées aux encoches et à la barre d’accueil.
 - Le trait commence directement depuis A ou B, se valide à l’autre ancre et peut être effacé ou annulé. E reste facultatif.
 - Les menus possèdent leur propre défilement et un bouton de fermeture accessible ; les réglages restent disponibles en plein écran.
-- Le changement d’orientation conserve les coordonnées du pointeur, la pointe du crayon et le raccord du trait.
+- Pendant un geste, caméra et zoom sont immobiles. Une rotation d’écran interrompt proprement le trait non validé et conserve le dernier pont valide.
+- Les poignées se déplacent uniquement pendant une prise directe; relâcher interrompt le mouvement, y compris celui d’un ascenseur.
 - Après une action du joueur, vérifier les réactions audio, le volume, la pause et les éventuels replis de lecture du navigateur. La préparation des extraits a vérifié leurs formats et durées ; elle n’a pas comporté de validation auditive par les outils d’étude.
 
 ## Fichier hors ligne
 
-Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.2.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
+Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.3.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales.
 
 Une adresse `file:` ne possède pas les mêmes garanties de stockage qu’une adresse HTTP. Si le navigateur refuse `localStorage`, la partie fonctionne sans sauvegarde persistante. Le plein écran peut être restreint par le navigateur. **Extraits originaux** est le mode audio par défaut ; **Grammelot synthétique** et **Italien synthétique** restent des options. Le mode italien ne propose que les voix locales déjà installées.
 

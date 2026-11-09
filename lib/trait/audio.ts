@@ -1,4 +1,4 @@
-import { embeddedAudioBytes, measureOriginalEnvelope, originalVoiceAsset, ORIGINAL_VOICE_CLIPS, type ClipEnvelope, type OriginalVoiceClip } from './original-media';
+import { embeddedAudioBytes, measureOriginalEnvelope, originalVoiceAsset, OriginalVoiceDeck, ORIGINAL_VOICE_CLIPS, ORIGINAL_VOICE_DURATION, type ClipEnvelope, type OriginalSpeechContext, type OriginalVoiceClip } from './original-media';
 
 export type GameSound =
   | 'draw'
@@ -10,7 +10,7 @@ export type GameSound =
   | 'erase'
   | 'click';
 
-export type GameSpeech = 'waiting' | 'start' | 'grumble' | 'win' | 'ready' | 'call' | 'surprise' | 'thanks';
+export type GameSpeech = OriginalSpeechContext;
 export type VoiceMode = 'original' | 'grammelot' | 'italian';
 export type OriginalVoiceStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
 
@@ -24,7 +24,7 @@ type PencilVoice = { source: AudioBufferSourceNode; filter: BiquadFilterNode; en
 type Vowel = 'a' | 'e' | 'i' | 'o' | 'u';
 type Syllable = readonly [vowel: Vowel, duration: number, pitch: number, endPitch: number, pause: number];
 type OriginalPlayback = { source: AudioBufferSourceNode; when: number; clip: OriginalVoiceClip; envelope: ClipEnvelope };
-type PendingOriginal = { epoch: number; requestedAt: number };
+type PendingOriginal = { epoch: number; requestedAt: number; kind: GameSpeech };
 
 const SPEECH_LINES: Record<GameSpeech, readonly string[]> = {
   waiting: ['Eh! Brum badà badà?', 'Ehi! Brrr, badabù?', 'Oh! Ma dai, brabadà!'],
@@ -130,7 +130,7 @@ export class GameAudio {
   private originalGain = 1;
   private originalPlayback: OriginalPlayback | null = null;
   private originalEnvelopes = new Map<string, ClipEnvelope>();
-  private originalVariant = 0;
+  private originalDeck = new OriginalVoiceDeck();
   private pendingOriginal: PendingOriginal | null = null;
   private speechEpoch = 0;
   private contextReady: Promise<void> = Promise.resolve();
@@ -299,7 +299,7 @@ export class GameAudio {
     const variant = this.speechVariants[kind] ?? 0;
     this.speechVariants[kind] = variant + 1;
     if (this.voiceMode === 'original') {
-      this.requestOriginal();
+      this.requestOriginal(kind);
       return;
     }
     if (this.voiceMode === 'italian') {
@@ -572,7 +572,7 @@ export class GameAudio {
         }
         const buffer = await context.decodeAudioData(bytes);
         if (this.disposed || this.context !== context || controller.signal.aborted) return null;
-        if (!buffer || buffer.duration < 2.905) throw new Error('Incomplete original voice atlas.');
+        if (!buffer || buffer.duration + .001 < ORIGINAL_VOICE_DURATION) throw new Error('Incomplete original voice atlas.');
         const envelopes = new Map(ORIGINAL_VOICE_CLIPS.map(clip => [clip.id, measureOriginalEnvelope(buffer, clip)]));
         let peak = 0;
         for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
@@ -598,8 +598,8 @@ export class GameAudio {
     return task;
   }
 
-  private requestOriginal(): void {
-    const request: PendingOriginal = { epoch: this.speechEpoch, requestedAt: speechClock() };
+  private requestOriginal(kind: GameSpeech): void {
+    const request: PendingOriginal = { epoch: this.speechEpoch, requestedAt: speechClock(), kind };
     this.pendingOriginal = request;
     void Promise.all([this.preloadOriginal(), this.contextReady]).then(([buffer]) => {
       if (this.pendingOriginal !== request) return;
@@ -607,14 +607,14 @@ export class GameAudio {
       if (!buffer || request.epoch !== this.speechEpoch || speechClock() - request.requestedAt > 1.2
         || this.disposed || !this.enabled || this.volume === 0 || this.voiceMode !== 'original'
         || !this.context || this.context.state !== 'running') return;
-      this.playOriginal(buffer);
+      this.playOriginal(buffer, request.kind);
     });
   }
 
-  private playOriginal(buffer: AudioBuffer): void {
+  private playOriginal(buffer: AudioBuffer, kind: GameSpeech): void {
     const context = this.context, master = this.master;
     if (!context || !master || this.originalPlayback || this.utterance || this.disposed) return;
-    const clip = ORIGINAL_VOICE_CLIPS[this.originalVariant++ % ORIGINAL_VOICE_CLIPS.length];
+    const clip = this.originalDeck.pick(kind);
     const envelope = this.originalEnvelopes.get(clip.id);
     if (!envelope) return;
     try {
@@ -622,13 +622,18 @@ export class GameAudio {
       const level = context.createGain();
       source.buffer = buffer;
       source.playbackRate.value = 1;
-      level.gain.value = this.originalGain;
+      const when = context.currentTime + 0.006;
+      // Tiny playback-edge ramps prevent PCM cuts from clicking. The bundled
+      // excerpt, all inner samples, source speed and source pitch stay intact.
+      level.gain.setValueAtTime(0, when);
+      level.gain.linearRampToValueAtTime(this.originalGain, when + .003);
+      level.gain.setValueAtTime(this.originalGain, when + clip.duration - .006);
+      level.gain.linearRampToValueAtTime(0, when + clip.duration);
       source.connect(level);
       level.connect(master);
-      const when = context.currentTime + 0.006;
       this.originalPlayback = { source, when, clip, envelope };
       this.track(source, [source, level]);
-      // Exact source pitch/timing: no voice filter, fade, invented phrase or resynthesis.
+      // Exact source pitch/timing: no voice filter, invented phrase or resynthesis.
       source.start(when, clip.offset, clip.duration);
     } catch {
       this.stopVoices();

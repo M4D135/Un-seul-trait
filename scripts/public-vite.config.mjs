@@ -9,7 +9,7 @@ export const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..'
 
 /** Standalone client build: no server framework, account, secret, or connector. */
 export function publicConfig(outDir = resolve(projectRoot, 'dist')) {
-  const hand = `data:image/webp;base64,${readFileSync(resolve(projectRoot, 'public/original-hand-atlas.webp')).toString('base64')}`;
+  const hand = `data:image/webp;base64,${readFileSync(resolve(projectRoot, 'public/drawing-hand-hd.webp')).toString('base64')}`;
   const voice = `data:audio/wav;base64,${readFileSync(resolve(projectRoot, 'public/original-voice.wav')).toString('base64')}`;
   const favicon = `data:image/svg+xml;base64,${readFileSync(resolve(projectRoot, 'public/favicon.svg')).toString('base64')}`;
   return {
@@ -22,7 +22,7 @@ export function publicConfig(outDir = resolve(projectRoot, 'dist')) {
       {name: 'embedded-favicon', transformIndexHtml: {order: 'pre', handler: html => html.replace('__TRAIT_FAVICON__', favicon)}},
     ],
     resolve: {alias: {'@': projectRoot}},
-    define: {__TRAIT_ORIGINAL_HAND_ASSET__: JSON.stringify(hand), __TRAIT_ORIGINAL_AUDIO_ASSET__: JSON.stringify(voice)},
+    define: {__TRAIT_HD_HAND_ASSET__: JSON.stringify(hand), __TRAIT_ORIGINAL_AUDIO_ASSET__: JSON.stringify(voice)},
     css: {postcss: {plugins: [tailwind({base: resolve(projectRoot, 'app')})]}},
     build: {
       outDir,
@@ -31,7 +31,7 @@ export function publicConfig(outDir = resolve(projectRoot, 'dist')) {
       cssCodeSplit: false,
       sourcemap: false,
       assetsInlineLimit: 10_000_000,
-      // The photographic frames and short original recordings work offline too.
+      // The photographic hand and short original recordings work offline too.
       chunkSizeWarningLimit: 3000,
       rolldownOptions: {output: {codeSplitting: false}},
     },

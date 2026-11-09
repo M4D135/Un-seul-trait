@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { GameAudio } from '../lib/trait/audio';
-import { ORIGINAL_VOICE_CLIPS } from '../lib/trait/original-media';
+import { OriginalVoiceDeck, ORIGINAL_VOICE_CLIPS, ORIGINAL_VOICE_DURATION, type OriginalSpeechContext } from '../lib/trait/original-media';
 
 class FakeParam {
   value = 0;
   cancelScheduledValues() {}
   setTargetAtTime(value: number) { this.value = value; }
+  setValueAtTime(value: number) { this.value = value; }
+  linearRampToValueAtTime(value: number) { this.value = value; }
 }
 
 class FakeNode {
@@ -51,12 +53,12 @@ function audioRig(embedded = false) {
   const contexts: FakeContext[] = [];
   let resolveDecode!: (value: AudioBuffer) => void, rejectDecode!: (error: Error) => void;
   const decoded = new Promise<AudioBuffer>((resolve, reject) => { resolveDecode = resolve; rejectDecode = reject; });
-  const samples = new Float32Array(2920);
+  const samples = new Float32Array(Math.round(ORIGINAL_VOICE_DURATION * 1000));
   for (const clip of ORIGINAL_VOICE_CLIPS) {
     samples.fill(.75, Math.round(clip.offset * 1000), Math.round(clip.offset * 1000) + 100);
   }
   const buffer = {
-    duration: 2.92, sampleRate: 1000, numberOfChannels: 1, length: samples.length,
+    duration: ORIGINAL_VOICE_DURATION, sampleRate: 1000, numberOfChannels: 1, length: samples.length,
     getChannelData: () => samples,
   } as unknown as AudioBuffer;
   class FakeContext {
@@ -128,22 +130,27 @@ test('a delayed original decode never speaks after pause, mute, mode change, or 
   }
 });
 
-test('original excerpts use exact markers and real sample amplitude, with one reaction at a time', async () => {
+test('original excerpts use exact contextual markers and real sample amplitude, with one reaction at a time', async () => {
   const rig = audioRig();
   try {
     assert.equal(rig.state.fetches.length, 0, 'construction alone must not load or play audio');
     rig.audio.unlock();
     await flushAudio();
-    assert.deepEqual(rig.state.fetches, ['https://game.example/chapter/original-voice.wav']);
+    assert.deepEqual(rig.state.fetches, ['https://game.example/chapter/original-voice.wav?v=3']);
     rig.resolveDecode(rig.buffer);
     await flushAudio();
     assert.equal(rig.audio.getOriginalVoiceStatus(), 'ready');
+    const heard: string[] = [];
     for (let i = 0; i < ORIGINAL_VOICE_CLIPS.length; i++) {
-      const clip = ORIGINAL_VOICE_CLIPS[i];
       rig.audio.speak('start');
       await flushAudio();
       assert.equal(rig.sources.length, i + 1);
       const source = rig.sources[i], context = rig.contexts[0];
+      const clip = ORIGINAL_VOICE_CLIPS.find(candidate => candidate.offset === source.starts[0][1]);
+      assert(clip, 'the actual source marker exists in the documented bank');
+      assert(clip.contexts.includes('start'), 'the original game cue survives asynchronous decoding');
+      assert(!heard.slice(-5).includes(clip.id), 'the five last clips remain excluded after a pause');
+      heard.push(clip.id);
       assert.equal(source.playbackRate.value, 1);
       assert.equal(source.buffer, rig.buffer);
       assert.deepEqual(source.starts[0].slice(1), [clip.offset, clip.duration]);
@@ -157,11 +164,49 @@ test('original excerpts use exact markers and real sample amplitude, with one re
       await flushAudio();
       assert.equal(rig.sources.length, i + 1, 'a reaction may not queue behind an active sample');
       source.finish();
+      rig.audio.hush();
       assert.equal(source.disconnected, true);
       assert.equal(rig.audio.getTalkAmount(), 0);
     }
+    assert(new Set(heard).size >= 6, 'one recurring situation has a real variety of original takes');
     assert.equal(rig.state.oscillators, 0);
     assert.equal(rig.utterances.length, 0);
+  } finally { rig.cleanup(); }
+});
+
+test('every cue has a shuffle bag and mixed conversations never repeat their five last takes', () => {
+  const cues: OriginalSpeechContext[] = ['waiting', 'start', 'grumble', 'win', 'ready', 'call', 'surprise', 'thanks'];
+  assert.equal(ORIGINAL_VOICE_CLIPS.length, 16);
+  assert(ORIGINAL_VOICE_CLIPS.every(clip => clip.duration > .3 && clip.duration < 1.1));
+  for (const cue of cues) {
+    const eligible = ORIGINAL_VOICE_CLIPS.filter(clip => clip.contexts.includes(cue));
+    assert(eligible.length >= 6, `${cue}: enough choices to exclude the recent five`);
+    const deck = new OriginalVoiceDeck(() => .37);
+    const firstBag = Array.from({ length: eligible.length }, () => deck.pick(cue));
+    assert.equal(new Set(firstBag.map(clip => clip.id)).size, eligible.length, `${cue}: no restart before the bag is consumed`);
+    assert(firstBag.every(clip => clip.contexts.includes(cue)));
+  }
+  const deck = new OriginalVoiceDeck(() => .61), heard: string[] = [];
+  for (let i = 0; i < 256; i++) {
+    const cue = cues[(i * 5 + Math.floor(i / 9)) % cues.length];
+    const clip = deck.pick(cue);
+    assert(clip.contexts.includes(cue), `context stays correct for ${cue}`);
+    assert(!heard.slice(-5).includes(clip.id), `no cross-context repeat at reaction ${i}`);
+    heard.push(clip.id);
+  }
+  assert.equal(new Set(heard).size, ORIGINAL_VOICE_CLIPS.length, 'all documented reactions can actually be selected');
+});
+
+test('a stale three-clip atlas is rejected rather than silently breaking the new reactions', async () => {
+  const rig = audioRig();
+  try {
+    rig.audio.unlock();
+    rig.audio.speak('call');
+    rig.resolveDecode({ ...rig.buffer, duration: 2.92 } as AudioBuffer);
+    await flushAudio();
+    assert.equal(rig.audio.getOriginalVoiceStatus(), 'unavailable');
+    assert.equal(rig.sources.length, 0);
+    assert.equal(rig.state.oscillators, 0);
   } finally { rig.cleanup(); }
 });
 
