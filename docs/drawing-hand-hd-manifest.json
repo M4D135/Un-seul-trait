@@ -1,0 +1,40 @@
+{
+  "asset": "drawing-hand-hd.webp",
+  "kind": "AI-generated photographic-style hand and forearm, not an original-film capture",
+  "createdAt": "2026-11-09",
+  "generator": "Built-in image_gen imagegen tool, transparent image edit",
+  "reference": {
+    "asset": "Un-seul-trait 1.1 drawing-hand.png",
+    "kind": "Previously generated photographic-style game asset",
+    "width": 1254,
+    "height": 1254
+  },
+  "source": {
+    "width": 941,
+    "height": 1672,
+    "mode": "RGBA",
+    "sha256": "d425a9dbb70ac9076b73df04207ec842a2190f54bd89805894aeb4dab87162e3"
+  },
+  "output": {
+    "format": "WebP",
+    "compression": "lossless",
+    "width": 941,
+    "height": 1672,
+    "bytes": 884488,
+    "sha256": "f8e7785122a7a3f1b6cc998797f971763b5ad7b43010d969bf30c6c2e61e53f7"
+  },
+  "rendering": {
+    "pencilTip": {
+      "x": 41,
+      "y": 226
+    },
+    "drawWidthWorld": 520,
+    "gestureWidthWorld": 480,
+    "entryRotationRadians": 0.12,
+    "pointerAnchor": "exact, no easing",
+    "forearm": "Long original generated extension; exits only through bottom image edge.",
+    "motion": "Wrist rotation plus brief arrival and retreat, not captured film motion."
+  },
+  "qualification": "Actual resolution is 941 × 1672 pixels. This asset is not native 4K and has not been upscaled or relabelled as 4K.",
+  "prompt": "Use case: precise-object-edit. Asset type: transparent high-definition photographic sprite of an animator's drawing hand for a game. Input image 1 is the edit target and pose reference: preserve this natural adult male right hand, authentic skin texture, knuckles, fingernails and hairy wrist, holding the same plain white wooden drawing pencil aimed toward the upper-left. Improve the optical sharpness and clean alpha boundary without artificial sharpening halos. Recompose onto a tall portrait canvas, maximum available high resolution (ideally 2160 by 3840). Keep the complete hand and entire pencil in the upper half with transparent margin on both sides. The pencil tip is near 10 percent canvas width and 16 percent canvas height. The hand occupies roughly x=14 to 76 percent and y=9 to 40 percent. Crucial: extend a long anatomically natural forearm downward to the bottom edge, with both forearm sides fully visible and separated from the left and right image boundaries. The forearm can curve subtly downwards; it must leave only through the bottom center, never cropped at the right edge. This long visible arm is necessary for compositing into a game without a cut-off wrist or huge hand. Maintain single real human hand and white pencil, accurate grip, five fingers with natural occlusion. Soft neutral studio light, realistic photographic detail, natural warm skin, no dramatic shadows. Background must be genuinely transparent RGBA, no white or colored background and no baked checkerboard. No lettering, logos, extra fingers, duplicate hands, floor, drawing, cartoon line, props, wristwatch or jewellery. Return one isolated photograph, not a sheet of views."
+}
