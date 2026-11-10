@@ -63,19 +63,43 @@ export function updateCamera(state: CameraState, world: GameWorld, level: Platfo
   const playHeight = Math.max(100, height - topInset - bottomInset);
   const baseScale = Math.min(width / (width < 600 ? 660 : 1250), playHeight / sceneHeight);
   const drawing = nearbyDrawing(world, level);
+  const room = !world.activeDrawing ? level.puzzles?.find(puzzle => {
+    const exitDrawing = level.drawings.find(item => item.triggerX >= puzzle.fromX && item.triggerX <= puzzle.toX);
+    const exitX = exitDrawing?.path[0]?.x ?? puzzle.toX;
+    return world.player.x >= puzzle.fromX - 180 && world.player.x < exitX - 80;
+  }) : null;
+  const roomExit = room ? level.drawings.find(item => item.triggerX >= room.fromX && item.triggerX <= room.toX)?.path[0]?.x ?? room.toX : 0;
+  const roomMachines = room ? (level.mechanisms ?? []).filter(item =>
+    item.from.x >= room.fromX - 180 && item.from.x < roomExit - 25) : [];
   const mechanism = world.handInteraction
     ? level.mechanisms?.find(m => m.id === world.handInteraction?.id) ?? null
     : !drawing ? getAvailableMechanism(world, level) : null;
   let left = 0, right = 0, needsFraming = false, targetScale = baseScale;
-  if (drawing) {
+  if (roomMachines.length) {
+    // An unresolved room is a little stage: both ends of every rail stay in
+    // shot, including the control behind the hero that must be moved again.
+    // Fit before a drag begins; never move the mapping under the held finger.
+    left = Math.min(...roomMachines.flatMap(item => [item.from.x - item.width / 2, item.to.x - item.width / 2]), world.player.x - 45) - 70;
+    right = Math.max(...roomMachines.flatMap(item => [item.from.x + item.width / 2, item.to.x + item.width / 2]), world.player.x + 45) + 70;
+    targetScale = Math.min(baseScale, width / (right - left));
+    needsFraming = true;
+  } else if (drawing) {
     const xs = drawing.path.map(p => p.x);
     left = Math.min(...xs, world.player.x - 45) - 75;
     right = Math.max(...xs, world.player.x + 45) + 75;
     targetScale = Math.min(baseScale, width / (right - left));
     needsFraming = !!world.activeDrawing || !world.drawn.includes(drawing.id);
   } else if (mechanism) {
-    left = Math.min(mechanism.from.x, mechanism.to.x, world.player.x - 45) - 90;
-    right = Math.max(mechanism.from.x, mechanism.to.x, world.player.x + 45) + 90;
+    const related = [mechanism];
+    for (const contact of mechanism.interlock?.requirements ?? []) {
+      if (!('mechanismId' in contact)) continue;
+      const linked = level.mechanisms?.find(item => item.id === contact.mechanismId);
+      // Local linked controls fit together on a phone. Distant chapter-wide
+      // final contacts remain notebook clues instead of shrinking the world.
+      if (linked && Math.abs(linked.from.x - mechanism.from.x) <= 650) related.push(linked);
+    }
+    left = Math.min(...related.flatMap(item => [item.from.x, item.to.x]), world.player.x - 45) - 90;
+    right = Math.max(...related.flatMap(item => [item.from.x, item.to.x]), world.player.x + 45) + 90;
     targetScale = Math.min(baseScale, width / (right - left));
     needsFraming = true;
   }

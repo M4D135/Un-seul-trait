@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as E from '../lib/trait/platformer';
 import type { DrawingObstacle, GameWorld, PlatformHazard, PlatformInput, PlatformLevel, PlatformMechanism, PlatformPoint, PlatformSurface } from '../lib/trait/platformer';
-import { PLATFORM_LEVELS as levels } from '../lib/trait/platform-levels';
+import { PLATFORM_LEVELS } from '../lib/trait/platform-levels';
 import { restoreProgress, saveProgress } from '../lib/trait/progress';
+
+// These regression scripts describe the original six courses. Authored logic
+// puzzles have their own solution scripts and intentionally reject open-all.
+const levels = PLATFORM_LEVELS.filter(level => level.id <= 6);
 
 const idle: PlatformInput = { left: false, right: false, crouch: false, draw: false };
 const dt = 1 / 120;

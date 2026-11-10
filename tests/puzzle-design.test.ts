@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PLATFORM_LEVELS as levels } from '../lib/trait/platform-levels';
+import { PLATFORM_LEVELS } from '../lib/trait/platform-levels';
 import * as E from '../lib/trait/platformer';
 import type { DrawingChoice, DrawingObstacle, GameWorld, PlatformHazard, PlatformLevel, PlatformPoint } from '../lib/trait/platformer';
 
 const idle = { left: false, right: false, crouch: false, draw: false };
+// These are the v1.4/1.5 route contracts; authored act II has separate solution tests.
+const levels = PLATFORM_LEVELS.filter(level => level.id <= 6);
 const routeLength = (path: PlatformPoint[]) => path.slice(1).reduce((length, point, i) =>
   length + Math.hypot(point.x - path[i].x, point.y - path[i].y), 0);
 

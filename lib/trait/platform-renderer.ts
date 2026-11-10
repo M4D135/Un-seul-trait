@@ -3,6 +3,7 @@ import type { CompanionActing } from './companion';
 import { getAvailableDrawing, getDrawingPlan, getMechanismPositions, getWorldHazardPosition, getWorldSurfaces, type GameWorld, type PlatformLevel, type PlatformPoint, type PlatformSurface } from './platformer';
 import { stabilizePlayerStroke } from './platform-drawing';
 import { drawMechanismBody, drawMechanismTrack } from './platform-mechanism-art';
+import { drawPuzzleSignals } from './puzzle-signals';
 
 export const PLATFORM_PALETTES = {
   blue: { background: '#064b8e', ink: '#fffdf6', accent: '#f6d89a' },
@@ -187,6 +188,11 @@ export function drawPlatformScene(
   ctx.save(); ctx.translate(-options.cameraX,0);
   ctx.lineCap='round';ctx.lineJoin='round';
 
+  drawPuzzleSignals(ctx,level,world,{
+    cameraX:options.cameraX,viewWidth:options.viewWidth,pixelScale:options.pixelScale,
+    ...palette,pointer:options.pointer,
+  });
+
   // Fixed rails, sockets and stops stay anchored while each real collider moves.
   for(const view of mechanisms) {
     const {mechanism}=view,margin=mechanism.width/2+45;
@@ -291,17 +297,24 @@ export function drawPlatformScene(
     ctx.globalAlpha=1;star(ctx,p.x,p.y+float,12);ctx.stroke();ctx.restore();
   });
 
-  for(const {mechanism,position,handle,held} of mechanisms) {
+  for(const {mechanism,position,handle,held,interlock} of mechanisms) {
     if(handle.x<options.cameraX-70||handle.x>options.cameraX+options.viewWidth+70)continue;
     const scale=Math.max(.25,options.pixelScale??1),handleRadius=Math.max(11,Math.min(28,14/scale));
     const hovered=!!options.pointer&&Math.hypot(options.pointer.x-handle.x,options.pointer.y-handle.y)<Math.max(25,24/scale);
     ctx.save();ctx.strokeStyle=palette.accent;ctx.fillStyle=palette.background;ctx.lineWidth=2.7;
+    if(interlock.locked)ctx.globalAlpha=.62;
     if(mechanism.type==='platform') {
       ctx.beginPath();ctx.moveTo(handle.x,handle.y+10);ctx.lineTo(position.x,position.y);ctx.stroke();
     }
     ctx.beginPath();ctx.arc(handle.x,handle.y,handleRadius+(held?2:0),0,TAU);ctx.fill();ctx.stroke();
     ctx.fillStyle=palette.accent;
-    ctx.beginPath();ctx.arc(handle.x,handle.y,3,0,TAU);ctx.fill();
+    if(interlock.locked){
+      // A closed clasp remains touchable: pressing it explains the linked lock.
+      ctx.lineWidth=1.7/scale;
+      ctx.beginPath();ctx.arc(handle.x,handle.y-2/scale,4/scale,Math.PI,0);
+      ctx.moveTo(handle.x-5/scale,handle.y-2/scale);ctx.lineTo(handle.x-5/scale,handle.y+5/scale);
+      ctx.lineTo(handle.x+5/scale,handle.y+5/scale);ctx.lineTo(handle.x+5/scale,handle.y-2/scale);ctx.stroke();
+    }else{ctx.beginPath();ctx.arc(handle.x,handle.y,3,0,TAU);ctx.fill();}
     if(held||hovered){ctx.globalAlpha=held?.7:.4;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(handle.x,handle.y,handleRadius+7,0,TAU);ctx.stroke();}
     ctx.restore();
   }

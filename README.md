@@ -1,20 +1,22 @@
 # Un seul trait
 
-**Dessine le passage. Attrape le décor. Avance avec un petit personnage qui a son caractère.**
+**Observe les mécanismes. Dessine ton passage. Trouve le bon ordre.**
 
-Une aventure de dessin en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.5.0** corrige les disparitions des oiseaux dans le champ, affine leur vol, ajoute des bruitages liés aux mouvements et retravaille les mécanismes du parcours. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et mécanismes à déplacer à la main.
+Une aventure de dessin et d’énigmes en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.6.0** porte l’aventure à **12 chapitres** : six parcours d’initiation, puis six nouveaux chapitres réunissant **19 salles à mécanismes liés**. Fermer un passage, régler un plateau entre ses butées ou rappeler un ascenseur peut devenir nécessaire pour avancer. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et décors à déplacer à la main.
 
 **Projet de fan non officiel.** Le personnage est redessiné en contours vectoriels; la main est une image générée au rendu photographique. La voix utilise 16 très courts fragments originaux. Les origines exactes, traitements et limites sont dans [CREDITS.md](CREDITS.md).
 
 ## Jouer sans compiler
 
-Télécharge **Un-seul-trait-1.5.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger.
+Télécharge **Un-seul-trait-1.6.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger. Le menu indique **Version 1.6.0** pour identifier le jeu chargé.
+
+Le menu propose un accès direct à **l’acte II — La mécanique des idées**. Le chapitre 7 est accessible immédiatement, même si tu souhaites garder les six premiers pour plus tard. Les chapitres 8 à 12 se débloquent en terminant le précédent ; une partie déjà commencée ou terminée reste accessible.
 
 ## Un geste pour dessiner, un geste pour déplacer
 
 Approche un passage manquant : les ancres **A et B** apparaissent. Pose le doigt ou la souris sur l’une et trace vers l’autre. Les deux sens fonctionnent, **A → B** et **B → A**, sans appuyer sur E. Si tu lèves le doigt avant l’arrivée, le brouillon reste en place : reprends sur son extrémité dorée pour continuer. Le passage devient praticable lorsque le trait rejoint l’autre ancre et que tu relâches.
 
-La palette de dessin contient **Guide** pour afficher ou masquer le trajet indicatif, **Reculer** pour retirer la dernière portion, **Effacer** pour recommencer le brouillon et **Fermer** pour abandonner l’essai. Le guide ne construit rien. Un léger lissage atténue les tremblements du doigt en conservant les pentes et les courbes voulues. L’encre disponible laisse de la marge autour de chaque parcours ; si le détour est trop long, tu peux le raccourcir sans perdre le reste du brouillon.
+La palette de dessin contient **Guide** pour demander un trajet indicatif, **Reculer** pour retirer la dernière portion, **Effacer** pour recommencer le brouillon et **Fermer** pour abandonner l’essai. Le guide est masqué au départ, ne construit rien et compte comme un indice lorsque tu l’affiches. Un léger lissage atténue les tremblements du doigt en conservant les pentes et les courbes voulues. L’encre disponible laisse de la marge autour de chaque parcours ; si le détour est trop long, tu peux le raccourcir sans perdre le reste du brouillon.
 
 Tu peux redessiner un passage déjà construit. L’ancien pont reste praticable tant que son remplacement n’est pas validé ; changer de choix, annuler un essai ou manquer le raccord ne le supprime pas. Le choix et le nouveau terrain ne sont enregistrés qu’à la validation.
 
@@ -38,9 +40,9 @@ Sur mobile, **← →** occupent le coin inférieur gauche. Au coin inférieur d
 
 Le menu **Commandes** propose **deux touches par action** et empêche les doublons. Les commandes personnalisées sont conservées. Le jeu utilise toute la fenêtre; un bouton plein écran permet aussi de demander au navigateur de masquer son interface. Les menus restent accessibles par-dessus la scène.
 
-## Six parcours et neuf décisions de chemin
+## Deux actes, des solutions à comprendre
 
-Dix-huit passages sont dessinés par le joueur. **Neuf de ces passages proposent deux choix, soit dix-huit variantes de parcours**. Les cartes permettent de préparer une solution ; tu dois ensuite dessiner toi-même le passage.
+L’aventure compte **37 passages à dessiner**, dont **28 à deux choix**, soit **56 variantes de parcours** à explorer, et **36 étoiles**. Les six premiers chapitres conservent leurs parcours, leurs mécanismes et leurs sauvegardes. Ils présentent notamment ces choix :
 
 | Situation | Deux approches possibles |
 | --- | --- |
@@ -50,6 +52,29 @@ Dix-huit passages sont dessinés par le joueur. **Neuf de ces passages proposent
 | Étoile en hauteur | Construire le détour qui la rejoint, ou prendre le raccourci inférieur |
 
 Ces choix modifient réellement le terrain, les manipulations nécessaires ou les étoiles accessibles. Les scies et les piques occupent des obstacles distincts ; les presses restent lisibles à côté des dangers mobiles. Le pont coulissant du chapitre 2 se déploie depuis sa rive ; on peut le préparer puis marcher dessus. Le volet du chapitre 5 se dégage le long d’une glissière oblique. Les ascenseurs transportent les pieds du personnage. Rails, roues, poulies et contrepoids suivent la position physique réelle, toujours sans saut.
+
+### Acte II — La mécanique des idées
+
+| Chapitre | Ce qu’il faut comprendre |
+| --- | --- |
+| 07 · Le sens des serrures | L’ordre des portes, les appuis d’un pont et le rôle du retour d’un passeur |
+| 08 · Le poids du trait | L’accord de plusieurs réglages et la différence entre le palier d’une étoile et celui de la sortie |
+| 09 · La ligne à rebours | Réutiliser une commande, revenir sur un réglage et organiser un relais entre deux plateaux |
+| 10 · L’étage oublié | Préparer les niveaux d’un ascenseur et la position d’un pont à contrepoids |
+| 11 · Les accords contraires | Faire correspondre plusieurs contacts, puis changer les états dans le bon ordre |
+| 12 · La dernière mécanique | Assembler les acquis dans quatre salles successives |
+
+Les poignées reliées ne sont pas indépendantes. De fins traits et des symboles montrent les associations ; un petit contact s’éclaire lorsque sa condition est satisfaite. Pour le circuit observé, les mêmes symboles apparaissent près des emplacements à raccorder sur les rails : on peut lire le mécanisme avant d’essayer. Les crans ordinaires gardent tous le même aspect et facilitent le geste. Les objets suivent toujours le doigt ou la souris. Une fois relâchés, ils gardent leur position, même si une autre commande les verrouille ensuite.
+
+Tout pousser en butée ne résout pas ces salles. Certaines demandent des positions intermédiaires, d’autres une porte refermée derrière le personnage, un plateau vide rappelé au départ ou plusieurs réglages simultanés. Les contacts de sortie vérifient l’assemblage réel. Les 19 nouveaux passages dessinés proposent chacun une rive basse et un balcon distincts ; la hauteur du trait change les dangers rencontrés et les étoiles accessibles.
+
+### Des indices à la demande et des défis de reprise
+
+Le carnet **Un indice ?** propose trois révélations successives pour la salle en cours : une observation, une piste puis la marche à suivre. Rien ne se dévoile avec le temps. Tu peux laisser le carnet fermé et inventer ton tracé sans afficher son guide.
+
+Terminer un chapitre, réunir toutes ses étoiles, réussir sans chute ni retour au drapeau, puis réussir sans indice sont des objectifs distincts. La **maîtrise** demande de réunir les trois étoiles **dans une même traversée complète**, sans mort, sans retour manuel au drapeau et sans indice, guide de dessin compris. Les meilleurs résultats de parties différentes ne sont pas assemblés pour attribuer cette maîtrise. Les anciennes sauvegardes gardent leur progression ; elles n’accordent pas rétroactivement un défi dont les conditions n’étaient pas suivies.
+
+Les variantes effectivement dessinées lors de chapitres terminés sont également enregistrées. Rejouer permet donc d’explorer les autres raccords, sans limite de temps imposée. Le jeu ne revendique pas une durée de campagne mesurée : le temps de recherche, les détours et les reprises dépendent du joueur.
 
 ## Un décor animé qui laisse respirer le jeu
 
@@ -65,7 +90,7 @@ Le personnage regarde le problème, appelle le dessinateur, montre le passage et
 
 La caméra suit le déplacement sans recentrer les ponts déjà construits. Elle prépare les points d’un passage manquant et reste exactement fixe pendant le dessin. Les commandes flottent sur le décor, avec une marge de cadrage pour ne pas cacher le trait sous les pouces.
 
-Les drapeaux servent de points de reprise. Les dessins validés, leurs choix de parcours, les étoiles et les mécanismes sont sauvegardés dans le navigateur. Le retour après une chute ou un rechargement reprend au dernier drapeau. Les ponts des anciennes sauvegardes restent conservés. Les éclaboussures rouges peuvent être remplacées par des particules blanches dans les réglages.
+Les drapeaux servent de points de reprise et s’activent lorsqu’on les atteint sur leur véritable palier. Passer sous un drapeau haut ne permet plus de reprendre directement à son étage. Les dessins validés, leurs choix de parcours, les étoiles, les positions des mécanismes et les aides utilisées sont sauvegardés dans le navigateur. Le retour après une chute ou un rechargement reprend au dernier drapeau. Les ponts des anciennes sauvegardes restent conservés. Les éclaboussures rouges peuvent être remplacées par des particules blanches dans les réglages.
 
 ## Sources et développement
 
@@ -92,7 +117,9 @@ Le build génère `dist/index.html` et `dist/offline-play.html`. Aucun compte, c
 | `lib/trait/camera.ts` | Suivi continu et cadrage des gestes |
 | `lib/trait/platformer.ts` / `platform-mechanisms.ts` | Simulation, collisions et mécanismes manuels |
 | `lib/trait/platform-drawing.ts` / `components/trait/drawing-palette.tsx` | Tracé libre, lissage, choix de chemin, guide et outils de reprise |
-| `lib/trait/platform-levels.ts` | Parcours, ascenseurs, obstacles et points de reprise |
+| `lib/trait/platform-levels.ts` / `platform-advanced-levels.ts` | Deux actes, salles, indices, obstacles et points de reprise |
+| `lib/trait/puzzle-signals.ts` | Liaisons, contacts et crans visibles des énigmes |
+| `lib/trait/campaign.ts` | Déblocage des chapitres, défis et exploration des variantes |
 | `lib/trait/platform-renderer.ts` | Terrain, dangers, poignées et raccords au personnage |
 | `lib/trait/cartoon-character.ts` / `companion.ts` | Silhouettes et petites scènes gestuelles |
 | `lib/trait/ambient-life.ts` / `ambient-bird-renderer.ts` | Comportements, trajectoires et silhouettes articulées des oiseaux |
@@ -102,7 +129,7 @@ Le build génère `dist/index.html` et `dist/offline-play.html`. Aucun compte, c
 | `lib/trait/controls.ts` / `progress.ts` | Configuration et sauvegardes |
 | `public/*-manifest.json` | Provenance des médias et définition réelle de la main |
 
-Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Les contrôles des oiseaux suivent leur présence jusqu’à la sortie complète, les retours, la caméra, le portrait et les changements de préférence. Les contrôles audio vérifient les signaux, le silence au repos et les interruptions. Les contrôles ajoutés pour les chemins vérifient la reprise du trait dans les deux sens, l’annulation partielle, le respect de l’encre et les conséquences physiques de chaque variante. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile.
+Les tests couvrent les gestes directs, la caméra, les mécanismes, les collisions, les trajets sans saut, les réactions, les oiseaux, la sauvegarde, la migration des touches et l’annulation des voix. Les nouveaux contrôles vérifient les enchaînements du deuxième acte, les contacts simultanés, les réglages intermédiaires, les deux itinéraires dessinés, les conditions de sortie, les reprises et l’attribution des défis. Les contrôles des oiseaux suivent leur présence jusqu’à la sortie complète, les retours, la caméra, le portrait et les changements de préférence. Les contrôles audio vérifient les signaux, le silence au repos et les interruptions. Ils ne remplacent pas une écoute humaine ni un essai sur chaque appareil mobile. Le résultat de la suite complète est donné dans les notes de publication.
 
 Le workflow **Vérification du jeu** contrôle les types, les tests et le build. Le workflow **Publication linea.estrasse.fr** compile et publie la branche `site` à chaque push sur `main`. Le service de mise à jour du serveur récupère ensuite cette branche pour https://linea.estrasse.fr : voir [deploy/README.md](deploy/README.md).
 

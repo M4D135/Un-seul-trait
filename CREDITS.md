@@ -1,4 +1,4 @@
-# Crédits, médias et références — version 1.5.0
+# Crédits, médias et références — version 1.6.0
 
 ## L’œuvre de référence
 
@@ -64,6 +64,8 @@ Les textures de pas, ailes, pépiements, frottements, butées et verrouillages s
 ## Dessins et adaptation interactive
 
 Les contours vectoriels, parcours, oiseaux, obstacles, gestes et interactions sont réalisés pour le jeu. Ils adaptent la planche fournie par le joueur et les séquences officielles étudiées; voir [MOVEMENTS.md](docs/MOVEMENTS.md). Les petites scènes de dispute ne sont pas des extraits vidéo reproduits image par image. Elles sont interrompues par les commandes du joueur et n’exécutent aucun mouvement physique à sa place.
+
+Les **six chapitres supplémentaires de la version 1.6.0**, leurs **dix-neuf salles d’énigmes**, les liaisons de mécanismes, les crans, les indices et les défis sont des créations de l’adaptation interactive. Les règles de portes interdépendantes, de contrepoids, de rappels et d’assemblage final ne sont pas présentées comme une transcription d’épisodes. La main générée et les seize fragments sonores décrits ci-dessus restent inchangés ; aucun nouvel extrait vidéo ou sonore n’a été ajouté pour cette extension.
 
 Le jeu reste **sans saut**, conformément à la demande du joueur; ce choix ne prétend pas inventorier tous les mouvements de tous les épisodes. Le lecteur du lien YouTube complémentaire est resté bloqué pendant l’étude précédente; les observations animées revendiquées portent sur les extraits officiels Quipos. Les épisodes complets et les planches de travail ne sont pas inclus dans le jeu.
 

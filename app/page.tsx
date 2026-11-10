@@ -1,9 +1,9 @@
 "use client";
 
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,ArrowDown,ArrowUp,Check,ChevronRight,Expand,Flag,Hand,HelpCircle,Keyboard,List,Menu,Pause,Pencil,Play,RotateCcw,Settings2,Skull,Star,Volume2,VolumeX,X} from "lucide-react";
+import {ArrowLeft,ArrowRight,ArrowDown,ArrowUp,ChevronRight,Expand,Flag,Hand,HelpCircle,Keyboard,Lightbulb,List,Menu,Pause,Pencil,Play,RotateCcw,Settings2,Skull,Star,Volume2,VolumeX,X} from "lucide-react";
 import {PLATFORM_LEVELS} from "../lib/trait/platform-levels";
-import {appendPlayerStroke,beginPlayerStroke,cancelPlayerDrawing,createWorld,finishPlayerStroke,getAvailableDrawing,getDrawingPlan,getDrawingChoice,selectDrawingChoice,undoPlayerStroke,resetPlayerStroke,restartAtCheckpoint,updateWorld,beginMechanismInteraction,moveMechanismInteraction,endMechanismInteraction,getAvailableMechanism,getMechanismHandlePosition,getMechanismPositions,type GameEvent,type PlatformInput,type PlatformPoint} from "../lib/trait/platformer";
+import {appendPlayerStroke,beginPlayerStroke,cancelPlayerDrawing,createWorld,finishPlayerStroke,getAvailableDrawing,getDrawingPlan,getDrawingChoice,selectDrawingChoice,undoPlayerStroke,resetPlayerStroke,restartAtCheckpoint,updateWorld,beginMechanismInteraction,moveMechanismInteraction,endMechanismInteraction,getAvailableMechanism,getMechanismHandlePosition,getMechanismPositions,getMechanismInterlock,getGoalInterlock,type GameEvent,type PlatformInput,type PlatformPoint,type PlatformLevel} from "../lib/trait/platformer";
 import {strokeLength} from "../lib/trait/platform-drawing";
 import {inspectPlayerRoute} from "../lib/trait/route-planning";
 import {DrawingPalette} from "../components/trait/drawing-palette";
@@ -16,19 +16,28 @@ import {actionForKey,keyLabel,normalizeKey,sanitizeBindings,type ActionId,type K
 import {ControlsConfig} from "../components/trait/controls-config";
 import {createCompanionState,updateCompanion} from "../lib/trait/companion";
 import {ADVENTURE_SAVE_KEY,readAdventure,restoreProgress,saveProgress,type SavedProgress} from "../lib/trait/progress";
+import {createCampaignRun,readRunStats,readChapterScores,recordChapterCompletion,isChapterUnlocked,type ChapterScore} from "../lib/trait/campaign";
+import {ChapterNotebook,PuzzleNotebook,RunChallenges} from "../components/trait/campaign-notebook";
 
-type Panel="menu"|"levels"|"help"|"settings"|"controls"|null;
-type Score={done:boolean;stars:number;deaths:number};
+type Panel="menu"|"levels"|"help"|"settings"|"controls"|"clues"|null;
+type Score=ChapterScore;
 const SAVE_KEY="un-seul-trait-platformer-v1";
-const emptyScores=()=>PLATFORM_LEVELS.map(()=>({done:false,stars:0,deaths:0}));
+const emptyScores=()=>readChapterScores(null,PLATFORM_LEVELS);
 const emptyInput=():PlatformInput=>({left:false,right:false,crouch:false,draw:false});
 const initialWorld=createWorld(PLATFORM_LEVELS[0]);
-type View={phase:typeof initialWorld.phase;stars:number;deaths:number;checkpoint:number;drawn:number;available:string|null;percent:number;editing:string|null;hasStroke:boolean;redrawing:boolean;mechanism:string|null;handling:boolean;solved:number;crouching:boolean;choiceId:string|null;stroking:boolean;inkPercent:number|null;reading:string};
+const puzzleAt=(level:PlatformLevel,x:number)=>level.puzzles?.find(p=>x>=p.fromX-90&&x<=p.toX+90)??null;
+type View={phase:typeof initialWorld.phase;stars:number;deaths:number;checkpoint:number;drawn:number;available:string|null;percent:number;editing:string|null;hasStroke:boolean;redrawing:boolean;mechanism:string|null;handling:boolean;solved:number;crouching:boolean;choiceId:string|null;stroking:boolean;inkPercent:number|null;reading:string;puzzle:string|null;lockMessage:string;goalMessage:string;goalPuzzle:string|null};
 const snapshot=(world:typeof initialWorld,level:typeof PLATFORM_LEVELS[number]):View=>{
   const source=level.drawings.find(d=>d.id===world.activeDrawing?.id)??getAvailableDrawing(world,level);
   const plan=source?getDrawingPlan(world,source):null;
   const route=world.activeDrawing?.path??(source?world.constructions[source.id]:null);
   const reading=route?.length?inspectPlayerRoute(world,level,route):null;
+  const nearby=getAvailableMechanism(world,level);
+  const interlock=nearby?getMechanismInterlock(world,level,nearby):null;
+  const goalLock=getGoalInterlock(world,level);
+  const missingContact=goalLock.items.find(item=>!item.satisfied);
+  const requirement=missingContact?.requirement;
+  const missingMachine=requirement&&'mechanismId' in requirement?level.mechanisms?.find(item=>item.id===requirement.mechanismId):null;
   return {
   phase:world.phase,stars:world.collected.length,deaths:world.deaths,checkpoint:world.checkpointIndex,
   drawn:world.drawn.length,available:getAvailableDrawing(world,level)?.id??null,
@@ -36,24 +45,18 @@ const snapshot=(world:typeof initialWorld,level:typeof PLATFORM_LEVELS[number]):
   editing:world.activeDrawing?.id??null,hasStroke:(world.activeDrawing?.path.length??0)>1,
   redrawing:world.drawn.includes(getAvailableDrawing(world,level)?.id??""),
   mechanism:getAvailableMechanism(world,level)?.id??null,handling:!!world.handInteraction,
-  solved:Object.values(world.mechanisms).filter(m=>m.progress>.95).length,crouching:world.player.crouching,
+  solved:(level.mechanisms??[]).filter(m=>Math.abs((world.mechanisms[m.id]?.progress??0)-(m.initialProgress??0))>.05).length,crouching:world.player.crouching,
   choiceId:source?getDrawingChoice(world,source)?.id??null:null,stroking:!!world.activeDrawing?.started,
   inkPercent:plan?.inkLimit?Math.round(strokeLength(world.activeDrawing?.path??[])/plan.inkLimit*100):null,
   reading:reading&&(world.activeDrawing||reading.kind!=='clear')?reading.message:'',
+  puzzle:puzzleAt(level,world.player.x)?.id??null,
+  lockMessage:interlock?.locked?interlock.message:'',
+  goalMessage:goalLock.locked&&Math.abs(world.player.x-level.goal.x)<210?`La sortie attend encore : ${missingContact?.label??goalLock.message}.`:'',
+  goalPuzzle:missingMachine?puzzleAt(level,missingMachine.from.x)?.id??null:null,
 };};
 
 function BrandMark(){
   return <svg viewBox="0 0 64 44" fill="none" aria-hidden="true"><path d="M1 36h21l-1-10 2-11c-1-7 9-12 15-9 6 4-2 7-7 6l6 3-6 3 2 9-2 9h32" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
-
-function LevelThumbnail({index}:{index:number}){
-  const l=PLATFORM_LEVELS[index],x=(n:number)=>n/l.width*200,y=(n:number)=>20+n*.1;
-  return <svg viewBox="0 0 200 88" fill="none" aria-hidden="true">
-    {l.surfaces.map((s,i)=><path key={i} d={`M${x(s.a.x)} ${y(s.a.y)}L${x(s.b.x)} ${y(s.b.y)}`} stroke="#fffdf6" strokeWidth="1.8" strokeLinecap="round"/>)}
-    {l.drawings.map(d=><path key={d.id} d={d.path.map((p,i)=>`${i?'L':'M'}${x(p.x)} ${y(p.y)}`).join(' ')} stroke="#fffdf6" strokeWidth="1.2" strokeDasharray="2 3" opacity=".45"/>)}
-    {l.mechanisms?.map(m=><g key={m.id}><path d={`M${x(m.from.x)} ${y(m.from.y)-8}L${x(m.to.x)} ${y(m.to.y)-8}`} stroke="#f6d89a" strokeWidth="1"/><circle cx={x(m.from.x)} cy={y(m.from.y)-8} r="2.8" stroke="#f6d89a" strokeWidth="1.2"/></g>)}
-    {l.stars.map((s,i)=><path key={i} d={`M${x(s.x)} ${y(s.y)-5}v5m-2.5-2.5h5`} stroke="#f6d89a" strokeWidth="1.2"/>)}
-  </svg>;
 }
 
 export default function Home(){
@@ -74,7 +77,8 @@ export default function Home(){
   const [drawingError,setDrawingError]=useState(false);
   const [cinema,setCinema]=useState(false);
   const [blood,setBlood]=useState(true);
-  const [showGuide,setShowGuide]=useState(true);
+  const [showGuide,setShowGuide]=useState(false);
+  const [revealedHints,setRevealedHints]=useState<Record<string,number>>({});
   const [ready,setReady]=useState(false);
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const stageRef=useRef<HTMLElement>(null);
@@ -101,6 +105,8 @@ export default function Home(){
   const lastSpeechRef=useRef(-1);
   const lastPencilRef=useRef<{point:PlatformPoint;at:number}|null>(null);
   const progressRef=useRef<Record<string,SavedProgress>>({});
+  const runRef=useRef(createCampaignRun());
+  const scoresRef=useRef(scores);scoresRef.current=scores;
   const saveReadyRef=useRef(false);
   const frameViewRef=useRef({scale:1,offsetY:0,cameraX:0});
   const latestRef=useRef({levelIndex,paused,panel,reducedMotion,cinema,blood,showGuide});
@@ -110,8 +116,10 @@ export default function Home(){
   const editing=level.drawings.find(d=>d.id===view.editing);
   const planning=editing??available;
   const mechanism=level.mechanisms?.find(m=>m.id===view.mechanism);
+  const puzzle=level.puzzles?.find(p=>p.id===view.puzzle)??null;
+  const clueScene=(view.goalMessage?level.puzzles?.find(p=>p.id===view.goalPuzzle):null)??puzzle??level.puzzles?.find(p=>p.toX>=worldRef.current.player.x)??level.puzzles?.at(-1)??null;
+  const clueKey=`${level.id}:${clueScene?.id??'scene'}`;
   const completed=scores.filter(s=>s.done).length;
-  const totalStars=scores.reduce((sum,s)=>sum+s.stars,0);
   const bindingText=(action:ActionId)=>bindings[action].filter((key):key is string=>key!==null).map(keyLabel).join(" / ");
   const focusGame=()=>canvasRef.current?.focus({preventScroll:true});
 
@@ -126,7 +134,7 @@ export default function Home(){
   const persistAdventure=useCallback(()=>{
     if(!saveReadyRef.current)return;
     const w=worldRef.current,l=PLATFORM_LEVELS[latestRef.current.levelIndex];
-    progressRef.current[String(l.id)]=saveProgress(w,l);
+    progressRef.current[String(l.id)]=saveProgress(w,l,runRef.current);
     try{localStorage.setItem(ADVENTURE_SAVE_KEY,JSON.stringify(progressRef.current));}
     catch{setStorageOk(false);}
   },[]);
@@ -162,21 +170,27 @@ export default function Home(){
   },[syncHeldControls]);
   const startLevel=useCallback((index:number,fresh=false)=>{
     persistAdventure();
-    const bounded=Math.max(0,Math.min(PLATFORM_LEVELS.length-1,index));
+    let bounded=Math.max(0,Math.min(PLATFORM_LEVELS.length-1,index));
+    if(!isChapterUnlocked(bounded,PLATFORM_LEVELS,scoresRef.current,progressRef.current))bounded=6;
     audioRef.current?.hush();handRef.current?.clear();clearInput();releaseHand();pointerRef.current=null;pointerClientRef.current=null;
-    const resumed=fresh?null:restoreProgress(progressRef.current[String(PLATFORM_LEVELS[bounded].id)],PLATFORM_LEVELS[bounded]);
+    const savedChapter=progressRef.current[String(PLATFORM_LEVELS[bounded].id)];
+    const resumed=fresh?null:restoreProgress(savedChapter,PLATFORM_LEVELS[bounded]);
+    runRef.current=resumed?readRunStats(savedChapter):createCampaignRun();
+    setShowGuide(false);
+    if(fresh)setRevealedHints(old=>Object.fromEntries(Object.entries(old).filter(([key])=>!key.startsWith(`${PLATFORM_LEVELS[bounded].id}:`))));
     worldRef.current=resumed??createWorld(PLATFORM_LEVELS[bounded]);cameraRef.current=createCamera();
     ambientRef.current=createAmbientState(PLATFORM_LEVELS[bounded]);
     companionRef.current=createCompanionState(worldRef.current);companionEventsRef.current=[];lastSpeechRef.current=-1;
     latestRef.current.levelIndex=bounded;
     setLevelIndex(bounded);setView(snapshot(worldRef.current,PLATFORM_LEVELS[bounded]));
     setPaused(false);setPanel(null);
-    setDrawingError(false);setTip(resumed?"Aventure reprise au dernier drapeau. Tes dessins et tes mécanismes sont conservés.":"Marche sur la ligne, baisse-toi et dessine les passages. Les poignées dorées permettent de déplacer le décor.");
+    setDrawingError(false);setTip(resumed?"Aventure reprise au dernier drapeau. Tes dessins et tes mécanismes sont conservés.":bounded>=6?PLATFORM_LEVELS[bounded].subtitle:"Marche sur la ligne, baisse-toi et dessine les passages. Les poignées dorées permettent de déplacer le décor.");
     if(fresh)delete progressRef.current[String(PLATFORM_LEVELS[bounded].id)];
   },[clearInput,releaseHand,persistAdventure]);
   const retry=useCallback(()=>{
     audioRef.current?.hush();handRef.current?.clear();clearInput();releaseHand();strokePointerRef.current=null;setDrawingError(false);
     const l=PLATFORM_LEVELS[latestRef.current.levelIndex];
+    runRef.current.checkpointReturns++;
     restartAtCheckpoint(worldRef.current,l);
     cameraRef.current=createCamera();
     ambientRef.current=createAmbientState(l);
@@ -212,10 +226,8 @@ export default function Home(){
       }
       if(saved){
         setBindings(sanitizeBindings(saved.bindings));
-        if(Array.isArray(saved.scores))setScores(emptyScores().map((_,i)=>({
-          done:saved.scores[i]?.done===true,stars:Math.max(0,Math.min(3,Number(saved.scores[i]?.stars)||0)),
-          deaths:Math.max(0,Number(saved.scores[i]?.deaths)||0),
-        })));
+        const restoredScores=readChapterScores(saved.scores,PLATFORM_LEVELS);
+        scoresRef.current=restoredScores;setScores(restoredScores);
       }
       // A damaged preference or legacy audio key must not discard a valid adventure.
       startLevel(saved&&Number.isInteger(saved.levelIndex)&&saved.levelIndex>=0&&saved.levelIndex<PLATFORM_LEVELS.length?saved.levelIndex:0);
@@ -272,13 +284,12 @@ export default function Home(){
         setTip(mechanism?.prompt??"Déplace la poignée dorée. Tu peux continuer à marcher et te baisser.");
         audioRef.current?.play("click");
       }
-      if(kind==="mechanism-settle"){audioRef.current?.play("mechanism-ready");setTip("En place. À vous deux de poursuivre le chemin.");}
+      if(kind==="mechanism-settle"){audioRef.current?.play("mechanism-ready");setTip(PLATFORM_LEVELS[latestRef.current.levelIndex].puzzles?.length?"Position conservée. Observe les liaisons et essaie le passage.":"En place. À vous deux de poursuivre le chemin.");}
       if(kind==="win"){
         audioRef.current?.play("win");clearInput();
         setTip("Niveau terminé !");
-        setScores(old=>old.map((s,i)=>i===latestRef.current.levelIndex?{
-          done:true,stars:Math.max(s.stars,w.collected.length),deaths:s.done?Math.min(s.deaths,w.deaths):w.deaths,
-        }:s));
+        const index=latestRef.current.levelIndex,chapter=PLATFORM_LEVELS[index];
+        setScores(old=>old.map((score,i)=>i===index?recordChapterCompletion(score,w,chapter,runRef.current):score));
       }
       if(kind==="checkpoint"||kind==="star"||kind==="mechanism-settle"||kind==="respawn"||kind==="win")persistAdventure();
     };
@@ -391,6 +402,16 @@ export default function Home(){
   };
   const release=(direction:"left"|"right"|"crouch")=>{touchDirectionsRef.current[direction]=false;syncHeldControls();};
   const callHand=()=>{unlock();focusGame();controlsRef.current.draw=true;};
+  const revealClue=()=>{
+    if(!clueScene||(revealedHints[clueKey]??0)>=3)return;
+    runRef.current.hintsUsed++;
+    setRevealedHints(old=>({...old,[clueKey]:Math.min(3,(old[clueKey]??0)+1)}));
+    persistAdventure();
+  };
+  const toggleGuide=()=>{
+    if(!showGuide){runRef.current.hintsUsed++;persistAdventure();}
+    setShowGuide(value=>!value);
+  };
   const cancelDrawing=()=>{
     releaseHand();cancelPlayerDrawing(worldRef.current);handRef.current?.clear();setDrawingError(false);
     setTip("Dessin annulé. Ton passage précédent est conservé.");focusGame();
@@ -441,6 +462,8 @@ export default function Home(){
       if(result.ok){
         e.preventDefault();mechanismPointerRef.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);
         companionEventsRef.current.push("mechanism-start");setDrawingError(false);setTip(result.message);
+      }else if(result.id){
+        setDrawingError(true);setTip(result.message);setView(snapshot(w,l));
       }else{
         touchCompanionRef.current=true;
         const p=worldRef.current.player;
@@ -521,13 +544,13 @@ export default function Home(){
 
   const frozen=paused||!!panel;
   const movingDisabled=frozen||view.phase!=="playing";
-  const guidance=view.phase==="drawing"&&!drawingError
+  const guidance=drawingError?tip:view.goalMessage?view.goalMessage:view.phase==="drawing"
     ? (view.hasStroke&&!view.stroking?tip:view.reading||"Trace ton chemin. Le doigt peut se lever : le trait reste en place.")
     :available&&view.phase==="playing"
     ? (view.redrawing?view.reading||"Ton trait est là. Tu peux changer de chemin et le redessiner.":"Choisis ton passage, puis dessine-le au doigt ou à la souris.")
     : mechanism&&view.phase==="playing"
-      ? (view.handling?"Garde la poignée en main et déplace-la le long du rail.":"Attrape la poignée dorée pour déplacer le décor.")
-      : tip;
+      ? (view.handling?"Garde la poignée en main et déplace-la le long du rail.":view.lockMessage||"Attrape la poignée dorée pour déplacer le décor.")
+      : puzzle?.title??tip;
   return <main className={"app-shell platform-app"+(cinema?" cinema-mode":"")} style={{"--scene-bg":palette.background} as React.CSSProperties}>
     <section ref={stageRef} className={"game-section platform-section"+(fullScreen?" expanded":"")} aria-label="Aventure dessinée Un seul trait">
       <div className="stage platform-stage">
@@ -541,7 +564,8 @@ export default function Home(){
           <div className="game-top-tools"><button className="game-icon-button sound-control" onClick={()=>{unlock();setMuted(v=>!v);}} aria-label={muted?"Activer le son":"Couper le son"}>{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button><button className="game-icon-button" onClick={togglePause} aria-label={paused?"Reprendre":"Mettre en pause"}>{paused?<Play size={18}/>:<Pause size={18}/>}</button><button className="game-icon-button menu-control" onClick={()=>setPanel("menu")} aria-label="Menu du jeu"><Menu size={22}/></button></div>
         </header>
 
-        {planning&&!frozen&&(view.phase==="drawing"||!view.redrawing)&&<DrawingPalette drawing={planning} choiceId={view.choiceId} editing={view.phase==="drawing"} held={view.stroking} hasStroke={view.hasStroke} guide={showGuide} inkPercent={view.inkPercent} onChoose={chooseRoute} onGuide={()=>setShowGuide(value=>!value)} onUndo={undoStroke} onClear={clearDrawing} onCancel={cancelDrawing}/>}
+        {level.puzzles?.length&&!frozen&&view.phase!=="won"&&view.phase!=="dead"&&<button className="puzzle-help-button" onClick={()=>setPanel("clues")} aria-label="Ouvrir le carnet d’indices" title="Un indice, si tu en veux un"><Lightbulb size={18}/><span>Un indice ?</span></button>}
+        {planning&&!frozen&&(view.phase==="drawing"||!view.redrawing)&&<DrawingPalette drawing={planning} choiceId={view.choiceId} editing={view.phase==="drawing"} held={view.stroking} hasStroke={view.hasStroke} guide={showGuide} concealHints={level.id>=7&&!showGuide} inkPercent={view.inkPercent} onChoose={chooseRoute} onGuide={toggleGuide} onUndo={undoStroke} onClear={clearDrawing} onCancel={cancelDrawing}/>}
         {available&&view.redrawing&&view.phase==="playing"&&!paused&&<button className="redraw-context" onClick={callHand} aria-label="Recadrer et redessiner ce passage"><Pencil size={15}/><span>Redessiner</span></button>}
         {view.phase==="dead"&&<div className="death-caption" role="status">Aïe !<span>Retour au dernier drapeau…</span></div>}
 
@@ -560,16 +584,17 @@ export default function Home(){
         <div className="game-bottom-meta"><span className="death-count" aria-label={view.deaths+" morts"}><Skull size={12}/>{view.deaths}</span><button onClick={fullscreen} aria-label={fullScreen?"Quitter le plein écran":"Plein écran"}><Expand size={15}/></button></div>
 
         {paused&&<div className="pause-layer"><div className="pause-content"><span className="eyebrow">UN INSTANT SUR LA LIGNE</span><h2>On reprend ?</h2><button onClick={togglePause} className="primary-button"><Play size={19} fill="currentColor"/>Continuer</button><div className="pause-links"><button onClick={()=>setPanel("menu")}><Menu size={16}/>Menu</button><button onClick={retry}><Flag size={16}/>Dernier drapeau</button></div></div></div>}
-        {view.phase==="won"&&<div className="win-layer"><div className="win-card"><span className="eyebrow">CHAPITRE {String(levelIndex+1).padStart(2,"0")} TERMINÉ</span><div className="win-stars" aria-label={view.stars+" étoiles sur 3"}>{[0,1,2].map(i=><Star key={i} size={36} fill={i<view.stars?"currentColor":"none"} className={i<view.stars?"earned":""}/>)}</div><h2>{levelIndex===PLATFORM_LEVELS.length-1?"Le dernier trait.":"Bien arrivé !"}</h2><p>{view.deaths===0?"Vous avez trouvé le chemin, sans une égratignure.":"Un peu de caractère. Et un chemin dessiné à deux."}</p><div className="win-cooperation"><span><Pencil size={15}/>{view.drawn} passages</span><span><Hand size={15}/>{view.solved} mécanismes</span></div><div className="win-buttons"><button className="quiet-button" onClick={()=>startLevel(levelIndex,true)}><RotateCcw size={16}/>Rejouer</button><button className="primary-button" onClick={()=>levelIndex<PLATFORM_LEVELS.length-1?startLevel(levelIndex+1):setPanel("levels")}>{levelIndex<PLATFORM_LEVELS.length-1?"Le chapitre suivant":"Les chapitres"}<ArrowRight size={18}/></button></div></div></div>}
+        {view.phase==="won"&&<div className="win-layer"><div className="win-card"><span className="eyebrow">CHAPITRE {String(levelIndex+1).padStart(2,"0")} TERMINÉ</span><div className="win-stars" aria-label={view.stars+" étoiles sur 3"}>{[0,1,2].map(i=><Star key={i} size={36} fill={i<view.stars?"currentColor":"none"} className={i<view.stars?"earned":""}/>)}</div><h2>{levelIndex===PLATFORM_LEVELS.length-1?"Le dernier trait.":"Bien arrivé !"}</h2><p>{view.deaths===0?"Vous avez trouvé le chemin, sans une égratignure.":"Un peu de caractère. Et un chemin dessiné à deux."}</p><div className="win-cooperation"><span><Pencil size={15}/>{view.drawn} passages</span><span><Hand size={15}/>{view.solved} réglages</span></div><RunChallenges score={scores[levelIndex]} run={runRef.current} stars={view.stars} deaths={view.deaths}/><div className="win-buttons"><button className="quiet-button" onClick={()=>startLevel(levelIndex,true)}><RotateCcw size={16}/>Rejouer</button><button className="primary-button" onClick={()=>levelIndex<PLATFORM_LEVELS.length-1?startLevel(levelIndex+1):setPanel("levels")}>{levelIndex<PLATFORM_LEVELS.length-1?"Le chapitre suivant":"Les chapitres"}<ArrowRight size={18}/></button></div></div></div>}
       </div>
     </section>
 
     <dialog ref={dialogRef} className={"game-dialog"+(panel==="levels"?" levels-dialog":"")+(panel==="menu"?" main-menu-dialog":"")} aria-labelledby="dialog-title" onCancel={()=>setPanel(null)} onClick={e=>{if(e.target===e.currentTarget)setPanel(null);}}>
       <div className="dialog-inner">
         <div className="dialog-top">{panel!=="menu"?<button className="back-to-menu" onClick={()=>setPanel("menu")}><ArrowLeft size={16}/><span>Le jeu</span></button>:<span className="eyebrow">UNE LIGNE, DEUX COMPLICES</span>}<button className="game-icon-button" aria-label="Fermer" onClick={()=>setPanel(null)}><X size={22}/></button></div>
-        {panel==="menu"&&<><div className="menu-title-mark"><BrandMark/></div><h2 id="dialog-title" className="main-game-title">un seul trait<span>.</span></h2><p className="menu-subtitle">Lui, le caractère. Toi, le crayon.</p><button className="primary-button menu-continue" onClick={()=>{setPanel(null);setPaused(false);focusGame();}}><Play size={18} fill="currentColor"/>Continuer l’aventure</button><nav className="game-menu-list" aria-label="Menu du jeu"><button onClick={()=>setPanel("levels")}><List size={18}/><span>Les chapitres<small>{completed} / {PLATFORM_LEVELS.length} terminés</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("controls")}><Keyboard size={18}/><span>Mes commandes<small>Deux touches par action</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("settings")}><Settings2 size={18}/><span>Les réglages<small>Voix, image et confort</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("help")}><HelpCircle size={18}/><span>Comment jouer<small>Un peu de doigté</small></span><ChevronRight size={18}/></button></nav><div className="menu-footer"><button onClick={()=>startLevel(levelIndex,true)}><RotateCcw size={14}/>Recommencer ce chapitre</button><p>{storageOk?"Tes dessins et ta progression sont sauvegardés.":"Ta progression est conservée pour cette session."}</p><p>D’après <a href="https://www.youtube.com/watch?v=8IHHHXIzDpA" target="_blank" rel="noreferrer">La Linea</a> d’Osvaldo Cavandoli.</p><p aria-label="Version du jeu">Version 1.5.0</p></div></>}
-        {panel==="levels"&&<><h2 id="dialog-title">Les chapitres<span>.</span></h2><p className="dialog-intro">Six longues lignes à explorer, des passages à inventer et du caractère à chaque détour.</p><div className="notebook-summary"><span><Check size={16}/>{completed} / {PLATFORM_LEVELS.length} terminés</span><span><Star size={17}/>{totalStars} / {PLATFORM_LEVELS.length*3} étoiles</span></div><div className="level-grid">{PLATFORM_LEVELS.map((l,i)=><button className={"level-card"+(i===levelIndex?" current":"")} key={l.id} onClick={()=>startLevel(i)} aria-label={"Niveau "+(i+1)+", "+l.title}><div className="level-preview" style={{background:PLATFORM_PALETTES[l.palette].background}}><LevelThumbnail index={i}/><span>{String(i+1).padStart(2,"0")}</span>{scores[i]?.done&&<i><Check size={13}/></i>}</div><div className="level-info"><strong>{l.title}</strong><small className="level-mechanics">{l.drawings.length} traits · {l.mechanisms?.length??0} mécanismes</small><span className="mini-stars">{[0,1,2].map(s=><Star key={s} size={12} fill={scores[i]?.stars>s?"currentColor":"none"}/>)}</span></div></button>)}</div><p className="dialog-footnote">Choisir un chapitre reprend au dernier drapeau atteint.</p></>}
-        {panel==="help"&&<><h2 id="dialog-title">À deux, sur un trait<span>.</span></h2><p className="dialog-intro">Tu le guides. Tu dessines. Lui ne manque jamais une occasion de te le faire savoir.</p><div className="help-steps"><div><span>01</span><section><h3>Un pouce pour marcher.</h3><p>Maintiens ← ou → en bas à gauche. Au clavier : {bindingText("left")} et {bindingText("right")}. Pas de saut : c’est la ligne qui fait le chemin.</p></section></div><div><span>02</span><section><h3>L’autre pour se baisser.</h3><p>↓ en bas à droite le garde baissé ; ↑ lui demande de se redresser quand il y a la place. Au clavier, maintiens {bindingText("crouch")} pour te baisser, ou utilise {bindingText("stand")} pour te redresser.</p></section></div><div><span>03</span><section><h3>Le passage est dans tes mains.</h3><p>Choisis un itinéraire, puis relie A et B au doigt ou à la souris. Le guide est facultatif. Tu peux lever le doigt, reprendre au bout doré et reculer pour corriger une portion. Un passage haut, un raccourci ou un chemin à traverser baissé : à toi de décider.</p></section></div><div><span>04</span><section><h3>Attrape le décor.</h3><p>Saisis directement une poignée dorée et fais-la glisser : porte, ascenseur, plateforme ou roue. Tu peux déplacer le personnage avec l’autre main pendant que tu tiens la poignée.</p></section></div></div><div className="help-companion-note"><Hand size={20}/><p>Il réclame, s’impatiente, remercie et réagit quand tu touches sa tête. Les drapeaux conservent tes dessins, tes étoiles et les mécanismes déplacés.</p></div><button className="configure-controls-link" onClick={()=>setPanel("controls")}><Keyboard size={17}/>Personnaliser mes touches<ChevronRight size={17}/></button><button className="primary-button help-close" onClick={()=>{setPanel(null);setPaused(false);}}>C’est parti<ArrowRight size={18}/></button></>}
+        {panel==="menu"&&<><div className="menu-title-mark"><BrandMark/></div><h2 id="dialog-title" className="main-game-title">un seul trait<span>.</span></h2><p className="menu-subtitle">Lui, le caractère. Toi, les idées.</p><button className="primary-button menu-continue" onClick={()=>{setPanel(null);setPaused(false);focusGame();}}><Play size={18} fill="currentColor"/>Continuer l’aventure</button><button className="new-act-link" onClick={()=>startLevel(6)}><span>ACTE II · CHAPITRES 07 — 12<strong>La mécanique des idées</strong></span><ArrowRight size={19}/></button><nav className="game-menu-list" aria-label="Menu du jeu"><button onClick={()=>setPanel("levels")}><List size={18}/><span>Les chapitres<small>{completed} / {PLATFORM_LEVELS.length} terminés</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("controls")}><Keyboard size={18}/><span>Mes commandes<small>Deux touches par action</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("settings")}><Settings2 size={18}/><span>Les réglages<small>Voix, image et confort</small></span><ChevronRight size={18}/></button><button onClick={()=>setPanel("help")}><HelpCircle size={18}/><span>Comment jouer<small>Des gestes et des idées</small></span><ChevronRight size={18}/></button></nav><div className="menu-footer"><button onClick={()=>startLevel(levelIndex,true)}><RotateCcw size={14}/>Recommencer ce chapitre</button><p>{storageOk?"Tes dessins et ta progression sont sauvegardés.":"Ta progression est conservée pour cette session."}</p><p>D’après <a href="https://www.youtube.com/watch?v=8IHHHXIzDpA" target="_blank" rel="noreferrer">La Linea</a> d’Osvaldo Cavandoli.</p><p aria-label="Version du jeu">Version 1.6.0</p></div></>}
+        {panel==="levels"&&<ChapterNotebook scores={scores} current={levelIndex} adventure={progressRef.current} onStart={startLevel}/>}
+        {panel==="clues"&&<PuzzleNotebook scene={clueScene} revealed={revealedHints[clueKey]??0} onReveal={revealClue} onClose={()=>{setPanel(null);focusGame();}}/>}
+        {panel==="help"&&<><h2 id="dialog-title">À deux, sur un trait<span>.</span></h2><p className="dialog-intro">Tu le guides. Tu dessines. Lui ne manque jamais une occasion de te le faire savoir.</p><div className="help-steps"><div><span>01</span><section><h3>Un pouce pour marcher.</h3><p>Maintiens ← ou → en bas à gauche. Au clavier : {bindingText("left")} et {bindingText("right")}. Pas de saut : c’est la ligne qui fait le chemin.</p></section></div><div><span>02</span><section><h3>L’autre pour se baisser.</h3><p>↓ en bas à droite le garde baissé ; ↑ lui demande de se redresser quand il y a la place. Au clavier, maintiens {bindingText("crouch")} pour te baisser, ou utilise {bindingText("stand")} pour te redresser.</p></section></div><div><span>03</span><section><h3>Le passage est dans tes mains.</h3><p>Choisis un itinéraire, puis relie A et B au doigt ou à la souris. Le guide peut être demandé si tu bloques. Tu peux lever le doigt, reprendre au bout doré et reculer pour corriger une portion. Un passage haut, un raccourci ou un chemin à traverser baissé : à toi de décider.</p></section></div><div><span>04</span><section><h3>Attrape le décor.</h3><p>Saisis directement une poignée dorée et fais-la glisser : porte, ascenseur, plateforme ou roue. Tu peux déplacer le personnage avec l’autre main pendant que tu tiens la poignée. Les petits contacts reliés indiquent ce qui verrouille un mécanisme : observe leur couleur et essaie plusieurs positions.</p></section></div><div><span>05</span><section><h3>Comprendre avant de traverser.</h3><p>Dans le deuxième acte, une position intermédiaire, un retour en arrière ou une porte refermée peuvent libérer la suite. Les marques du rail aident à régler sans précision pénible. Le petit carnet propose trois indices progressifs, seulement si tu les demandes.</p></section></div></div><div className="help-companion-note"><Hand size={20}/><p>Il réclame, s’impatiente, remercie et réagit quand tu touches sa tête. Les drapeaux conservent tes dessins, tes étoiles et les mécanismes déplacés. Pour maîtriser un chapitre, réunis ses trois étoiles sans chute, retour au drapeau ni indice. Un guide de dessin compte comme un indice.</p></div><button className="configure-controls-link" onClick={()=>setPanel("controls")}><Keyboard size={17}/>Personnaliser mes touches<ChevronRight size={17}/></button><button className="primary-button help-close" onClick={()=>{setPanel(null);setPaused(false);}}>C’est parti<ArrowRight size={18}/></button></>}
         {panel==="controls"&&<><h2 id="dialog-title">Tes commandes<span>.</span></h2><p className="dialog-intro">Deux touches au choix pour chaque mouvement. Le crayon et les poignées suivent toujours ta souris ou ton doigt.</p><ControlsConfig bindings={bindings} onChange={next=>{clearInput();setBindings(next);}}/><div className="controls-dialog-actions"><button className="quiet-button" onClick={()=>setPanel("help")}><HelpCircle size={17}/>Comment jouer</button><button className="primary-button" onClick={()=>{setPanel(null);focusGame();}}>Revenir au jeu<ArrowRight size={18}/></button></div></>}
         {panel==="settings"&&<><h2 id="dialog-title">À ta façon<span>.</span></h2><p className="dialog-intro">Garde la ligne. Ajuste le reste.</p><div className="setting-row"><div><h3>Voix et bruitages</h3><p>Répliques originales et sons du jeu.</p></div><button className={"toggle"+(!muted?" on":"")} role="switch" aria-checked={!muted} aria-label="Voix et bruitages" onClick={()=>{unlock();setMuted(v=>!v);}}><span/></button></div><div className="voice-choice" role="group" aria-label="Type de voix"><button aria-pressed={voiceMode==="original"} onClick={()=>{unlock();setVoiceMode("original");}}>Voix originale</button><button aria-pressed={voiceMode==="grammelot"} onClick={()=>{unlock();setVoiceMode("grammelot");}}>Grammelot synthétique</button><button aria-pressed={voiceMode==="italian"} onClick={()=>{unlock();setVoiceMode("italian");}}>Italien synthétique</button></div><div className="setting-volume"><label htmlFor="volume">Volume <b>{volume}%</b></label><input id="volume" type="range" min="0" max="100" value={volume} onChange={e=>setVolume(Number(e.target.value))} onPointerUp={()=>{unlock();audioRef.current?.play("star");}}/></div><div className="setting-row"><div><h3>Mode cinéma</h3><p>Épure les indications. Garde les commandes.</p></div><button className={"toggle"+(cinema?" on":"")} role="switch" aria-checked={cinema} aria-label="Mode cinéma" onClick={()=>setCinema(v=>!v)}><span/></button></div><div className="setting-row"><div><h3>Éclaboussures rouges</h3><p>Désactive pour des éclats de trait blanc.</p></div><button className={"toggle"+(blood?" on":"")} role="switch" aria-checked={blood} aria-label="Éclaboussures rouges" onClick={()=>setBlood(v=>!v)}><span/></button></div><button className="configure-controls-link" onClick={fullscreen}><Expand size={18}/>{fullScreen?"Quitter le plein écran":"Passer en plein écran"}<ChevronRight size={17}/></button><p className="setting-note">{reducedMotion?"Les mouvements réduits de ton appareil sont respectés.":"L’animation respecte le réglage de mouvements réduits de ton appareil."}</p><button className="primary-button help-close" onClick={()=>setPanel(null)}>Revenir au jeu<ArrowRight size={18}/></button></>}
       </div>

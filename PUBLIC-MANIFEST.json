@@ -18,23 +18,28 @@
     },
     {
       "path": "CREDITS.md",
-      "bytes": 6881,
-      "sha256": "baa000a4e26aa9978aa86fb05069376eafcb7dc3c4493bdeafe0122a4632b56e"
+      "bytes": 7425,
+      "sha256": "144e62b53719757b988888bb7208779a0cf76de51667bbada4262f53f91e4d82"
     },
     {
       "path": "README.md",
-      "bytes": 11028,
-      "sha256": "221b2f09856220d8bf8b2cbaa822f5de9a56b6b7a8ac2c322c1abcd47ce7784e"
+      "bytes": 15159,
+      "sha256": "1f7f150d7b94316162b0fb43eb841ed1f3b0d4ff3344f016d7f8df208a78d566"
     },
     {
       "path": "app/globals.css",
-      "bytes": 25556,
-      "sha256": "1cf91c24fd9b70b39da5664545028d1a632f92c5eb957493c8ca30ef60ddb6fb"
+      "bytes": 30310,
+      "sha256": "9d9f62b4eb677cec056d5f21d0f374a4d914cd56684ab4ae94c33a96217d595e"
     },
     {
       "path": "app/page.tsx",
-      "bytes": 50690,
-      "sha256": "7fccfc5fa96e616fdf2324652a7bcc83d97c8ebc50be84ee9be59f331e511ce7"
+      "bytes": 52801,
+      "sha256": "0b198b9bc3d13145d4df11e9df6b05b0ecec42f978dc37f35fa3c4cdcfc02c86"
+    },
+    {
+      "path": "components/trait/campaign-notebook.tsx",
+      "bytes": 7258,
+      "sha256": "f3a06ceb3c9f92e4e1f4499c8f145b836d8fc2592940cbbd15b53fd333e557e5"
     },
     {
       "path": "components/trait/controls-config.module.css",
@@ -48,18 +53,18 @@
     },
     {
       "path": "components/trait/drawing-palette.tsx",
-      "bytes": 3338,
-      "sha256": "47c3bcdc11be8830b0dedc10a452cccaafbfcacb8fc029ccc54a74867b7bd420"
+      "bytes": 3510,
+      "sha256": "142534491633527bd93df4b2511dab051128f47d4e496cb03eda3394c61e5b09"
     },
     {
       "path": "docs/BUILD.md",
-      "bytes": 10138,
-      "sha256": "5143534776ca5a057903531d1b9582e763b0618e5e46a60ec1f5f63dd387ba88"
+      "bytes": 14239,
+      "sha256": "8a39a21dc6f3074707dde9c5a9728341b786dfd0e1a27625267c96ae47793fda"
     },
     {
       "path": "docs/MOVEMENTS.md",
-      "bytes": 11460,
-      "sha256": "b60c3b82cacaf9a80fb0b8c7be5af7d8ad578bb15e79e405329f6f71cc6e2164"
+      "bytes": 14339,
+      "sha256": "3426f52d2ff466f125852506d2671b4c745dbc0cd81ad22332e107c9eacc17a2"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -83,8 +88,13 @@
     },
     {
       "path": "lib/trait/camera.ts",
-      "bytes": 6585,
-      "sha256": "3b2410230a0edad6164249a3791f1e69e4265b927256d1106440856f849e9c8e"
+      "bytes": 8374,
+      "sha256": "b3e684b4048d7ffe3cb62d4a6498f69f5a3673a6617f733667cb04e57921a14e"
+    },
+    {
+      "path": "lib/trait/campaign.ts",
+      "bytes": 7112,
+      "sha256": "ae4f70c57e06cb06baddef541445d8c78beb6e6a2dcae768561b01468620de62"
     },
     {
       "path": "lib/trait/cartoon-character.ts",
@@ -117,14 +127,19 @@
       "sha256": "c7954c4cbdf64ade1b243a54c1faf6bced0680d88a0ba0928264fb32d1b6cbaa"
     },
     {
+      "path": "lib/trait/platform-advanced-levels.ts",
+      "bytes": 21926,
+      "sha256": "4b8cfd3ecdcd37fa0249a6f7c83133e947d378ddcdce5481d5e738b643045371"
+    },
+    {
       "path": "lib/trait/platform-drawing.ts",
       "bytes": 6810,
       "sha256": "a7a4c58d244dc39d7678a38da783a3f7c2d92f180772b3e1ba54f68a496a2c34"
     },
     {
       "path": "lib/trait/platform-levels.ts",
-      "bytes": 29823,
-      "sha256": "ec21f93ade3b2ff73464528d18e7da38c71eded241bfc58f67f2e3fdcfe718ec"
+      "bytes": 29910,
+      "sha256": "c0d59e40c40d8c4e6d60aacccb04b3804399855aabe8dad6cd3c5730be0281ee"
     },
     {
       "path": "lib/trait/platform-mechanism-art.ts",
@@ -133,23 +148,28 @@
     },
     {
       "path": "lib/trait/platform-mechanisms.ts",
-      "bytes": 12133,
-      "sha256": "80064c2267bccdf38bc89866e2fb0da6696577dad9133ad38ad0942ed7dd0009"
+      "bytes": 16133,
+      "sha256": "bf8613e8b69db4f3f28e156c27055e7318b98e2c9361a2c3ca76959b1a096e0a"
     },
     {
       "path": "lib/trait/platform-renderer.ts",
-      "bytes": 20624,
-      "sha256": "62991911c08f69d87f65a6481a2e047cd5e65f5bfaecefa258bf834c6eb674db"
+      "bytes": 21337,
+      "sha256": "5909f7ecbcaf5a9733d13a7ff7beccb5a3a36cf6a76692e124c9996152492ac4"
     },
     {
       "path": "lib/trait/platformer.ts",
-      "bytes": 27098,
-      "sha256": "48c0f913c9e55f8ec77c76ed0b5ebba14394fd39fa348023b9b375d61c417141"
+      "bytes": 28006,
+      "sha256": "1b2101e4c91e5480da6e2950119c0f9b8ace318fa5ca6a11c5561094189c4a86"
     },
     {
       "path": "lib/trait/progress.ts",
-      "bytes": 4142,
-      "sha256": "603ce22bca99cfe35b122988dcb7de5a0d61460e228b7b691b562f20b83524d6"
+      "bytes": 4411,
+      "sha256": "b1b0cbef54ba6f23e5512a9caa33661afbb0d15fd14ad6689a3e0a9f45a3898e"
+    },
+    {
+      "path": "lib/trait/puzzle-signals.ts",
+      "bytes": 14788,
+      "sha256": "67ff27009bb46d86ffd1a07e2fb1ed24b040a857739912c5ba8380d561eeacfe"
     },
     {
       "path": "lib/trait/route-planning.ts",
@@ -159,12 +179,12 @@
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "2c8805ec4050407a91411f7cfb3493147994a5037c24da1640e2fa00069c2645"
+      "sha256": "3c56896f573ef412ccf652d3310409d21b09a41b54e9dfa67e8445e0a2a5e249"
     },
     {
       "path": "package.json",
       "bytes": 949,
-      "sha256": "161c8c2bea8b70ca46db60a4eba6bbdb99b4bb995b5998235b5cf30e70b727fa"
+      "sha256": "f14f4078021369593e557dacdbccc7d1c08c46040921ee0b84e463fd4f7db58c"
     },
     {
       "path": "public/drawing-hand-hd-manifest.json",
@@ -217,6 +237,26 @@
       "sha256": "4033d97ea07e1ee7d7023b4aa7406305e344ced46972f15457907fd35a88a614"
     },
     {
+      "path": "tests/advanced-adversarial.test.ts",
+      "bytes": 4805,
+      "sha256": "6d944348d44dc07fe76cdc78f447f63164e92c919d1db00244606637576ad27f"
+    },
+    {
+      "path": "tests/advanced-camera.test.ts",
+      "bytes": 3455,
+      "sha256": "f81b229013b65b0faf0c2f36f3211c912e9761a0be2ccff9508fc5685c599144"
+    },
+    {
+      "path": "tests/advanced-courses.test.ts",
+      "bytes": 3996,
+      "sha256": "ba7c99a3bc31decdb58f80459db0226491d0a84e76f3d04988942dd4e11d6a9d"
+    },
+    {
+      "path": "tests/advanced-walkthrough.ts",
+      "bytes": 7491,
+      "sha256": "9008efed3d9d85a02fa151d59634f19f0db3eddc06575d8c911588028e93a8b4"
+    },
+    {
       "path": "tests/ambient-life.test.ts",
       "bytes": 23596,
       "sha256": "83196c6fe50aa874e8d514765f464661d992485dfff9067afa9f6827b894c9db"
@@ -230,6 +270,11 @@
       "path": "tests/camera.test.ts",
       "bytes": 5025,
       "sha256": "6d9a92c49851c24ae8e4de534d0a7c92a2db0ee177a91ca346affc0303e7b830"
+    },
+    {
+      "path": "tests/campaign.test.ts",
+      "bytes": 6905,
+      "sha256": "830aa961d2b73a8332b05e0e06044eb58097c3011e63f9d3a3b73c2736f7a6bc"
     },
     {
       "path": "tests/companion.test.ts",
@@ -273,8 +318,8 @@
     },
     {
       "path": "tests/platform-mechanisms.test.ts",
-      "bytes": 26633,
-      "sha256": "e8ecc944868888ca1253775f9677feec55fb01b8cd2c526dae78b4b5dd634fa8"
+      "bytes": 26843,
+      "sha256": "b9cc1e373ae5e58904eb8da3180bbd600f23d2c1cb24b86fbb793e7a5d63f1e9"
     },
     {
       "path": "tests/progress.test.ts",
@@ -283,8 +328,18 @@
     },
     {
       "path": "tests/puzzle-design.test.ts",
-      "bytes": 8802,
-      "sha256": "9a4e8d7a78dd46be307b9feb4ba6bcc78159178d721786ac3051e913618ea484"
+      "bytes": 8943,
+      "sha256": "8c51b51da1912df2035b5f21bfa522911160b64509c644a459614dc0dbf16333"
+    },
+    {
+      "path": "tests/puzzle-interlocks.test.ts",
+      "bytes": 10781,
+      "sha256": "b9e5e9f3424ebd0acdd6ffb2d0af3ee08ff0b891dd19817c6101513dce2fa724"
+    },
+    {
+      "path": "tests/puzzle-signals.test.ts",
+      "bytes": 11473,
+      "sha256": "4ff7ac8a68ea8e97efb2e92439ec273d8ee7afde5255fd4653416d62545c9052"
     },
     {
       "path": "tsconfig.json",

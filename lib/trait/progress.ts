@@ -1,5 +1,6 @@
 import {createWorld, type GameWorld, type PlatformLevel, type PlatformPoint} from './platformer';
 import {preparePlayerStroke} from './platform-drawing';
+import {readRunStats, type CampaignRun} from './campaign';
 
 export const ADVENTURE_SAVE_KEY = 'un-seul-trait-adventure-v2';
 export type SavedProgress = {
@@ -12,19 +13,22 @@ export type SavedProgress = {
   deaths: number;
   time: number;
   mechanisms: Record<string, number>;
+  /** Optional for backward compatibility; only a complete new run earns mastery. */
+  run?: CampaignRun;
 };
 
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const bounded = (v: unknown, min: number, max: number, fallback = min) => typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 
 /** Save only stable progress. A reload always starts safely at a reached flag. */
-export function saveProgress(world: GameWorld, level: PlatformLevel): SavedProgress {
+export function saveProgress(world: GameWorld, level: PlatformLevel, run?: CampaignRun): SavedProgress {
   return {
     version: 2, levelId: level.id, checkpointIndex: world.checkpointIndex,
     constructions: Object.fromEntries(level.drawings.filter(d => world.drawn.includes(d.id) && world.constructions[d.id]).map(d => [d.id, world.constructions[d.id].map(p => ({...p}))])),
     drawingChoices: { ...world.drawingChoices },
     collected: [...world.collected], deaths: world.deaths, time: world.time,
     mechanisms: Object.fromEntries((level.mechanisms ?? []).map(m => [m.id, world.mechanisms[m.id]?.progress ?? m.initialProgress ?? 0])),
+    ...(run ? {run: readRunStats({run})} : {}),
   };
 }
 
@@ -69,7 +73,7 @@ export function readAdventure(raw: unknown, levels: PlatformLevel[]): Record<str
   const result: Record<string, SavedProgress> = {};
   for (const level of levels) {
     const world = restoreProgress(raw[String(level.id)], level);
-    if (world) result[String(level.id)] = saveProgress(world, level);
+    if (world) result[String(level.id)] = saveProgress(world, level, readRunStats(raw[String(level.id)]));
   }
   return result;
 }

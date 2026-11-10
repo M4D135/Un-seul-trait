@@ -1,8 +1,8 @@
 import { preparePlayerStroke, strokeLength, STROKE_ANCHOR_RADIUS } from './platform-drawing';
-import { advanceMechanisms, createMechanismStates, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
-import type { HandInteraction, MechanismState, PlatformMechanism } from './platform-mechanisms';
-export { beginMechanismInteraction, endMechanismInteraction, getAvailableMechanism, getMechanismHandlePosition, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
-export type { HandInteraction, MechanismResult, MechanismState, MechanismView, PlatformMechanism } from './platform-mechanisms';
+import { advanceMechanisms, createMechanismStates, getGoalInterlock, getMechanismPosition, getMechanismSurfaces, getWorldHazardPosition, releaseMechanisms, resolveGateCollision } from './platform-mechanisms';
+import type { HandInteraction, MechanismState, PlatformMechanism, PuzzleRequirement } from './platform-mechanisms';
+export { beginMechanismInteraction, endMechanismInteraction, evaluatePuzzleRequirements, getAvailableMechanism, getGoalInterlock, getMechanismHandlePosition, getMechanismInterlock, getMechanismPosition, getMechanismPositions, getWorldHazardPosition, moveMechanismInteraction } from './platform-mechanisms';
+export type { HandInteraction, MechanismResult, MechanismState, MechanismView, PlatformMechanism, PuzzleInterlockState, PuzzleRequirement, PuzzleRequirementState } from './platform-mechanisms';
 
 /** Deterministic, DOM-free platform game simulation. Coordinates are in scene units. */
 export type PlatformPoint = { x: number; y: number };
@@ -38,6 +38,15 @@ export type DrawingObstacle = {
   inkLimit?: number;
 };
 
+/** Authored observation areas; hints are revealed deliberately, never on a timer. */
+export type PuzzleScene = {
+  id: string;
+  title: string;
+  fromX: number;
+  toX: number;
+  hints: [string, string, string];
+};
+
 export type PlatformLevel = {
   id: number;
   title: string;
@@ -54,6 +63,10 @@ export type PlatformLevel = {
   checkpoints: PlatformPoint[];
   /** Objects manipulated by the human hand, with shared render/collision coordinates. */
   mechanisms?: PlatformMechanism[];
+  /** Late puzzles also ask for a final assembly, not merely reaching the right edge. */
+  goalRequirements?: PuzzleRequirement[];
+  goalMessage?: string;
+  puzzles?: PuzzleScene[];
 };
 
 export type PlatformInput = {
@@ -523,12 +536,15 @@ function updatePlayer(world: GameWorld, level: PlatformLevel, surfaces: Platform
 
   if (p.grounded) {
     for (let index = world.checkpointIndex + 1; index < level.checkpoints.length; index++) {
-      if (p.x >= level.checkpoints[index].x) {
+      const flag = level.checkpoints[index];
+      // A flag belongs to its real landing, not the entire vertical column.
+      // Crossing below a balcony must never grant a teleport onto it on retry.
+      if (Math.abs(p.x - flag.x) <= 28 && Math.abs(p.y - flag.y) <= PLATFORM_PHYSICS.stepHeight + 1) {
         world.checkpointIndex = index;
         events.push('checkpoint');
       }
     }
-    if (p.x >= level.goal.x - 10 && p.y <= level.goal.y + 28) {
+    if (p.x >= level.goal.x - 10 && Math.abs(p.y - level.goal.y) <= PLATFORM_PHYSICS.stepHeight + 1 && !getGoalInterlock(world, level).locked) {
       p.vx = 0;
       world.phase = 'won';
       world.completedAt = world.time;

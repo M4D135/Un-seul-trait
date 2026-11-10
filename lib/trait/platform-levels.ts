@@ -1,4 +1,5 @@
 import type { DrawingObstacle, PlatformHazard, PlatformLevel, PlatformMechanism, PlatformPoint, PlatformSurface } from './platformer';
+import { ADVANCED_LEVELS } from './platform-advanced-levels';
 
 const p = (x: number, y: number): PlatformPoint => ({ x, y });
 const floor = (x1: number, x2: number, y: number): PlatformSurface => ({ a: p(x1, y), b: p(x2, y) });
@@ -475,4 +476,4 @@ function addDrawingChoices(level: PlatformLevel): void {
   }
 }
 
-export const PLATFORM_LEVELS: PlatformLevel[] = DRAWING_COURSES.map(cooperativeCourse);
+export const PLATFORM_LEVELS: PlatformLevel[] = [...DRAWING_COURSES.map(cooperativeCourse), ...ADVANCED_LEVELS];
