@@ -7,9 +7,18 @@ import {preparePlayerStroke} from '../lib/trait/platform-drawing';
 test('wrong reachable partial settings can always be corrected; no advanced chamber has an irreversible logical deadlock', () => {
   let audited = 0;
   for (const level of ADVANCED_LEVELS) for (const scene of level.puzzles!) {
-    const localIds = new Set(level.mechanisms!.filter(m => m.from.x >= scene.fromX && m.from.x <= scene.toX).map(m => m.id));
-    const goals = level.goalRequirements!.filter(r => 'mechanismId' in r && localIds.has(r.mechanismId));
-    assert(goals.length > 0, `${level.id}/${scene.id}: the room needs a real exit condition`);
+    const drawing = level.drawings.find(d => d.triggerX >= scene.fromX && d.triggerX <= scene.toX)!;
+    assert(drawing, `${level.id}/${scene.id}: missing drawing beyond the mechanical room`);
+    const roomMechanisms = level.mechanisms!.filter(m => m.from.x >= scene.fromX
+      && Math.max(m.from.x, m.to.x) < drawing.path[0].x);
+    const exit = roomMechanisms.reduce((last, m) => Math.max(m.from.x, m.to.x) > Math.max(last.from.x, last.to.x) ? m : last);
+    assert(exit.interlock?.requirements.length, `${level.id}/${scene.id}: the physical exit must have prerequisites`);
+    // Prove that each room's last door/platform can be operated, including
+    // its contacts. Earlier rooms need not retain those contacts forever.
+    const goals: E.PuzzleRequirement[] = [
+      ...exit.interlock.requirements,
+      { mechanismId: exit.id, min: .88, label: 'Sortie physique de la salle libérée' },
+    ];
     const needed = new Set(goals.flatMap(r => 'mechanismId' in r ? [r.mechanismId] : []));
     let changed = true;
     while (changed) {

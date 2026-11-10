@@ -1,4 +1,4 @@
-# Compilation autonome — version 1.6.0
+# Compilation autonome — version 1.6.1
 
 ## Prérequis
 
@@ -21,7 +21,7 @@ L’entrée est `scripts/public-app/main.tsx`. Elle monte directement le composa
 
 Le build produit `dist/index.html`, ses ressources locales et `dist/offline-play.html`. Le fichier autonome contient le JavaScript, le CSS, le favicon, la main photographique générée, les courts extraits sonores sélectionnés et les notices de crédit. Les sources intégrales de Quipos et les liens YouTube restent des références externes : le jeu utilise les ressources locales préparées, sans télécharger les épisodes au lancement.
 
-La campagne complète est incluse : **12 chapitres**, **37 passages à dessiner**, dont **28 à deux choix**, et **36 étoiles**. Les six nouveaux chapitres sont déclarés dans `lib/trait/platform-advanced-levels.ts` ; leurs **19 salles** fournissent les conditions physiques des mécanismes, les conditions finales et les trois indices de chaque situation. Aucun contenu de chapitre n’est chargé depuis un service distant.
+La campagne complète est incluse : **12 chapitres**, **37 passages à dessiner**, dont **28 à deux choix**, et **36 étoiles**. Les six nouveaux chapitres sont déclarés dans `lib/trait/platform-advanced-levels.ts` ; leurs **19 salles** fournissent les conditions physiques des mécanismes, les verrouillages locaux et les trois indices de chaque situation. Aucun contenu de chapitre n’est chargé depuis un service distant.
 
 `base: './'` permet de servir le dossier compilé à la racine ou dans un sous-dossier. Pour un hébergement statique, copier **tout le contenu** de `dist/`, y compris les médias et leurs manifestes. Le fichier `.nojekyll` est fourni pour les hébergements compatibles avec cette convention. `npm run preview` sert localement le build sans le modifier.
 
@@ -40,13 +40,13 @@ L’audio est PCM signé 16 bits, mono, **44 100 Hz**. Il contient **11,42 secon
 
 La compilation remplace `__TRAIT_HD_HAND_ASSET__` et `__TRAIT_ORIGINAL_AUDIO_ASSET__` par des URLs de données. Le HTML autonome décode donc la main et le WAV localement sans requête média. Les notices et manifestes sont inclus dans ce HTML et copiés dans `docs/` du build. Les origines et limites sont précisées dans [CREDITS.md](../CREDITS.md).
 
-La version 1.6.0 conserve ces fichiers médias. Ses ajouts concernent les énigmes, la progression, les indices et leur présentation ; elle n’introduit pas de nouveaux enregistrements du dessin animé.
+La version 1.6.1 conserve ces fichiers médias. Ses ajouts concernent les énigmes, la progression, les indices et leur présentation ; elle n’introduit pas de nouveaux enregistrements du dessin animé.
 
 ## Logique des énigmes et sauvegardes
 
 `platform-mechanisms.ts` évalue les verrouillages à partir des positions réelles des objets et des constructions validées. Toutes les conditions d’une liaison doivent être satisfaites. Les fenêtres de progression autorisent des positions intermédiaires ; les crans aimantés rapprochent une visée tactile de son repère sans lancer de déplacement autonome. Une poignée verrouillée reste à la position où le joueur l’a laissée. Les collisions et le dessin utilisent ces mêmes coordonnées.
 
-`puzzle-signals.ts` dessine les contacts, les symboles associés et les crans. Une seule liaison proche est développée à la fois pour préserver la lisibilité. Sur ce circuit, des empreintes portant les symboles attendus indiquent les contacts physiques des rails ; leur position est calculée sur la même trajectoire que celle de la poignée. Elles restent en contour tant que l’alignement n’est pas réalisé. Les crans ordinaires restent visuellement neutres ; les explications détaillées viennent du carnet demandé par le joueur. La sortie utilise aussi les conditions réelles du chapitre et la hauteur du personnage. Les drapeaux exigent une présence sur leur palier : marcher en dessous ne valide pas une reprise à l’étage supérieur.
+`puzzle-signals.ts` dessine les contacts, les symboles associés et les crans. Une seule liaison proche est développée à la fois pour préserver la lisibilité. Sur ce circuit, des empreintes portant les symboles attendus indiquent les contacts physiques des rails ; leur position est calculée sur la même trajectoire que celle de la poignée. Elles restent en contour tant que l’alignement n’est pas réalisé. Les crans ordinaires restent visuellement neutres ; les explications détaillées viennent du carnet demandé par le joueur. Les verrous restent locaux à chaque salle. Le drapeau final valide le passage lorsque le personnage l’atteint à la bonne hauteur, sans revérifier les réglages des salles précédentes. Les sauvegardes 1.6.0 bloquées à l’arrivée se reprennent sans modification de leurs données. Les drapeaux exigent une présence sur leur palier : marcher en dessous ne valide pas une reprise à l’étage supérieur.
 
 `campaign.ts` conserve les résultats, les variantes parcourues et les conditions de la traversée en cours. Les six premiers chapitres et l’entrée du deuxième acte restent ouverts ; les suivants se débloquent progressivement. Un chapitre déjà commencé ou terminé reste accessible. La maîtrise exige les trois étoiles, aucune mort, aucun retour manuel au drapeau et aucun indice dans une seule traversée complète. Afficher le guide d’un dessin compte comme une aide. La migration n’additionne pas des records de parties séparées pour fabriquer une maîtrise et n’en attribue pas aux sauvegardes anciennes dépourvues de ces informations.
 
@@ -54,9 +54,9 @@ La version 1.6.0 conserve ces fichiers médias. Ses ajouts concernent les énigm
 
 `scripts/public-test.mjs` repère les fichiers `tests/**/*.test.ts` et `.spec.ts`, puis les compile avec TypeScript en CommonJS, cible ES2022, dans un dossier temporaire. Node exécute les tests compilés ; le dossier est supprimé à la fin, même en cas d’échec. Cela permet de conserver les imports TypeScript relatifs du projet sans ajouter de transpileur d’exécution.
 
-Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. Les parcours du deuxième acte sont exercés par les API de marche, de tracé et de manipulation, avec leurs dangers actifs. Des contrôles distincts vérifient les contacts intermédiaires et simultanés, le refus d’une ouverture systématique de toutes les poignées, la reprise des positions, les drapeaux à la bonne hauteur, les conditions de sortie et les défis. La suite conserve aussi les contrôles sur les oiseaux, les poses et les textures sonores. Les notes de version donnent le résultat de la suite complète au moment de la publication. Ces contrôles ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
+Les tests restent indépendants de React et du DOM. Ils couvrent notamment les dessins manuels, le moteur sans saut, la marche baissée, les collisions, les mécanismes et la sauvegarde. Les parcours du deuxième acte sont exercés par les API de marche, de tracé et de manipulation, avec leurs dangers actifs. Des contrôles distincts vérifient les contacts intermédiaires et simultanés, le refus d’une ouverture systématique de toutes les poignées, la reprise des positions, les drapeaux à la bonne hauteur, l’arrivée après déplacement d’un mécanisme déjà franchi, la reprise d’une sauvegarde 1.6.0 bloquée et les défis. La suite conserve aussi les contrôles sur les oiseaux, les poses et les textures sonores. Les notes de version donnent le résultat de la suite complète au moment de la publication. Ces contrôles ne remplacent pas une vérification dans le navigateur ou une écoute des ressources audio.
 
-Pour vérifier l’interface de la version 1.6.0, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
+Pour vérifier l’interface de la version 1.6.1, ouvrir `npm run dev` ou `npm run preview` et contrôler les vues **390 × 844**, **320 × 568** et **844 × 390** :
 
 - La scène et les commandes restent dans le viewport ; le geste de jeu ne fait pas défiler la page.
 - Les flèches sont à gauche, baisser et se redresser à droite ; les boutons restent accessibles avec les zones réservées aux encoches et à la barre d’accueil.
@@ -77,7 +77,7 @@ Pour vérifier l’interface de la version 1.6.0, ouvrir `npm run dev` ou `npm r
 
 ## Fichier hors ligne
 
-Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.6.0.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales. Le menu affiche la version pour distinguer le nouveau fichier d’un ancien onglet resté ouvert.
+Le build regroupe le code en un seul module, intègre les feuilles de style et embarque les ressources visuelles et sonores nécessaires. **`offline-play.html` peut être déplacé seul.** Le fichier diffusé pour cette version est nommé **`Un-seul-trait-1.6.1.html`** ; il conserve les contrôles tactiles et clavier ainsi que les ressources locales. Le menu affiche la version pour distinguer le nouveau fichier d’un ancien onglet resté ouvert.
 
 Une adresse `file:` ne possède pas les mêmes garanties de stockage qu’une adresse HTTP. Si le navigateur refuse `localStorage`, la partie fonctionne sans sauvegarde persistante. Le plein écran peut être restreint par le navigateur. **Extraits originaux** est le mode audio par défaut ; **Grammelot synthétique** et **Italien synthétique** restent des options. Le mode italien ne propose que les voix locales déjà installées.
 

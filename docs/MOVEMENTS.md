@@ -15,7 +15,7 @@ La planche de poses fournie par le joueur sert de référence de silhouette. L�
 
 Le [site consacré à Cavandoli](https://osvaldocavandoli.com/i-serial/) décrit le personnage comme une partie du trait : il marche, rencontre un obstacle et interpelle la main qui complète le décor. Il présente sa voix comme du grammelot.
 
-Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux introduits en version 1.3.0 et conservés en 1.6.0 sont identifiés dans [CREDITS.md](../CREDITS.md).
+Le [lien complémentaire demandé](https://youtu.be/8IHHHXIzDpA) a été ouvert, mais son lecteur est resté bloqué au chargement dans l’environnement de travail. Aucun mouvement ne lui est attribué ici. Les observations proviennent de la planche jointe et des extraits officiels effectivement examinés. Les vidéos d’étude complètes et leurs planches restent hors du jeu ; les courts médias originaux introduits en version 1.3.0 et conservés en 1.6.1 sont identifiés dans [CREDITS.md](../CREDITS.md).
 
 ## Traduction dans le personnage jouable
 
@@ -61,7 +61,7 @@ Le pont du chapitre 2 coulisse depuis sa rive et le volet du chapitre 5 monte su
 
 Les bruitages sont des textures PCM produites localement : pas, souffle des ailes, pépiements courts, friction et impacts des mécanismes. Le planificateur observe les vrais changements d’état et de position, tient compte du cadre et de la distance, et remet ses observations à zéro à la reprise. Il n’ajoute ni boucle de moteur au repos ni bande sonore extérieure. Les seize fragments de voix originale restent inchangés.
 
-## Comprendre et agir — version 1.6.0
+## Comprendre et agir — version 1.6.1
 
 Le deuxième acte ajoute **six chapitres et dix-neuf salles d’énigmes**. Ses mécanismes et règles sont créés pour le jeu ; ils ne prétendent pas reproduire des scènes précises de l’œuvre. Les contrôles restent limités à marcher, se baisser, se redresser, dessiner et déplacer manuellement le décor. Aucun saut ou déplacement automatique n’est ajouté pour résoudre les nouvelles situations.
 
@@ -71,7 +71,7 @@ La main suit le geste du joueur jusque dans les réglages intermédiaires. Les c
 
 Les tracés indicatifs restent masqués au départ. Le carnet dévoile trois indices progressifs uniquement à la demande ; afficher le guide d’un dessin compte aussi comme une aide. Les défis conservent les étoiles, l’absence de chute ou de retour au drapeau, l’autonomie et les autres tracés explorés. La maîtrise exige les trois étoiles sans mort, retour manuel ni indice dans la même traversée complète. Il n’y a pas de délai imposé pour réfléchir, et aucune durée de campagne mesurée n’est annoncée.
 
-Les drapeaux et la sortie tiennent compte du palier réellement atteint. Marcher sous un drapeau haut ne valide pas sa reprise. Les sauvegardes conservent les dessins, les positions des mécanismes et les aides déjà utilisées, sans attribuer rétroactivement une maîtrise aux anciennes parties.
+Les drapeaux et la sortie tiennent compte du palier réellement atteint. Depuis la version 1.6.1, le drapeau final ne recontrôle plus à distance les réglages des salles déjà franchies ; leurs verrous physiques continuent d’exiger la bonne manipulation sur place. Marcher sous un drapeau haut ne valide pas sa reprise. Les sauvegardes conservent les dessins, les positions des mécanismes et les aides déjà utilisées, sans attribuer rétroactivement une maîtrise aux anciennes parties.
 
 ## Vérification
 

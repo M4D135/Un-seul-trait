@@ -1,4 +1,4 @@
-# Crédits, médias et références — version 1.6.0
+# Crédits, médias et références — version 1.6.1
 
 ## L’œuvre de référence
 

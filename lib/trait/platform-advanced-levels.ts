@@ -8,7 +8,6 @@ const floor = (level: PlatformLevel, left: number, right: number, y = 430) => le
 const slope = (level: PlatformLevel, left: number, y1: number, right: number, y2: number) => level.surfaces.push({ a: point(left, y1), b: point(right, y2) });
 const flag = (level: PlatformLevel, x: number, y = 430) => level.checkpoints.push(point(x, y));
 const add = (level: PlatformLevel, mechanism: PlatformMechanism) => { level.mechanisms!.push(mechanism); return mechanism; };
-const requireAtExit = (level: PlatformLevel, ...requirements: PuzzleRequirement[]) => level.goalRequirements!.push(...requirements);
 const interlock = (requirements: PuzzleRequirement[], message: string) => ({ requirements, message });
 function door(id: string, title: string, x: number, y = 430, travel = 240, width = 40): Extract<PlatformMechanism, { type: 'gate' }> {
   return { id, title, prompt: 'Observe les liaisons et saisis la poignée pour essayer ton réglage.', type: 'gate', appearance: 'door',
@@ -61,7 +60,6 @@ function airlock(level: PlatformLevel, b: number, key: string, third = false) {
   add(level, { ...door(inner, 'Le battant d’entrée', b + 350), interlock: interlock([closed(outer, 'Battant opposé refermé')], 'Les deux battants partagent un verrou. Observe celui d’en face.') });
   add(level, { ...door(outer, 'Le battant de sortie', b + 650), interlock: interlock([closed(inner, 'Battant derrière soi refermé')], 'Le verrou reste retenu par le battant d’entrée.') });
   if (third) add(level, { ...door(`${key}-temoin`, 'La porte témoin', b + 980), interlock: interlock([closed(inner, 'Entrée refermée'), open(outer, 'Sortie ouverte')], 'Le dernier verrou observe les deux battants, pas seulement le plus proche.') });
-  requireAtExit(level, closed(inner, 'Sas refermé derrière soi'), open(third ? `${key}-temoin` : outer, 'Sortie du sas libérée'));
   flag(level, b + 790);
   scene(level, key, third ? 'Trois portes, un seul passage' : 'Comment entrer sans tout ouvrir ?', b, [
     'Chaque porte retient la poignée de l’autre. Regarde les liaisons avant de toucher les deux.',
@@ -70,8 +68,8 @@ function airlock(level: PlatformLevel, b: number, key: string, third = false) {
   ]);
 }
 
-/** The two ends of the bridge align together only at its central notch. An
- * extended-to-the-end deck still carries a rider, but cannot release the exit. */
+/** The two ends align at the central notch, which releases the local latch.
+ * Once the character has passed it, moving the deck must not revoke progress. */
 function balancedBridge(level: PlatformLevel, b: number, key: string, counterweight = false) {
   floor(level, b, b + 470); floor(level, b + 990, b + 1150);
   const bridge = `${key}-pont`, latch = `${key}-porte`, weight = `${key}-poids`;
@@ -79,12 +77,11 @@ function balancedBridge(level: PlatformLevel, b: number, key: string, counterwei
   add(level, { ...platform(bridge, 'Le pont à deux appuis', b + 560, 430, b + 900, 430, 540), detents: [0, .5, 1],
     ...(counterweight ? { interlock: interlock([notch(weight, .5, 'Contrepoids équilibré')], 'Le contrepoids retient le pont hors de son cran d’équilibre.') } : {}) });
   add(level, { ...door(latch, 'Le verrou des deux rives', b + 1070), interlock: interlock([notch(bridge, .5, 'Les deux appuis alignés')], 'Le pont doit toucher les deux rives à la fois pour libérer ce verrou.') });
-  requireAtExit(level, notch(bridge, .5, 'Pont sur ses deux appuis'), open(latch, 'Verrou des rives ouvert'));
   flag(level, b + 1020);
   scene(level, key, 'Où le pont porte-t-il vraiment ?', b, [
     'L’extrémité du rail ne correspond pas forcément à l’endroit où le pont est utile.',
     'Il faut raccorder les deux appuis en même temps. Le verrou lit la position réelle du plateau.',
-    `${counterweight ? 'Place d’abord le contrepoids au cran central. ' : ''}Place le pont au cran central, traverse jusqu’à la rive de droite, puis ouvre le verrou. Laisse le pont centré.`,
+    `${counterweight ? 'Place d’abord le contrepoids au cran central. ' : ''}Place le pont au cran central, traverse jusqu’à la rive de droite, puis ouvre le verrou. Une fois le verrou franchi, le passage est résolu.`,
   ]);
 }
 
@@ -97,7 +94,6 @@ function returningFerry(level: PlatformLevel, b: number, key: string, diagonal =
   add(level, platform(ferry, diagonal ? 'Le passeur du balcon' : 'Le passeur à rappel', b + 550, 430, b + 850, y, 144));
   add(level, { ...door(pin, 'Le cliquet d’arrivée', b + 950, y), interlock: interlock([open(ferry, 'Plateau accosté')], 'Le cliquet n’accroche que lorsque le plateau a accosté.') });
   add(level, { ...door(exit, 'La porte du retour', b + 1050, y), interlock: interlock([open(pin, 'Cliquet accroché'), closed(ferry, 'Plateau rappelé')], 'Le cliquet est prêt, mais le câble attend le retour du plateau.') });
-  requireAtExit(level, closed(ferry, 'Passeur rappelé à son départ'), open(exit, 'Porte du retour ouverte'));
   flag(level, b + 1000, y);
   scene(level, key, diagonal ? 'Qui doit redescendre ?' : 'Le passage n’est pas fini à l’arrivée', b, [
     'Un cliquet garde la mémoire de l’accostage. Le câble continue vers une seconde porte.',
@@ -118,7 +114,6 @@ function counterweights(level: PlatformLevel, b: number, key: string, three = fa
   const required = [notch(left, l, 'Poids gauche sur son contact'), notch(right, r, 'Poids droit sur son contact'), ...(three ? [notch(centre, .5, 'Poids central équilibré')] : [])];
   add(level, { ...platform(ferry, 'Le plateau équilibré', b + 700, 430, b + 920, 430), interlock: interlock(required, 'Les contrepoids doivent fermer leurs contacts ensemble.') });
   add(level, { ...door(exit, 'Le verrou de l’équilibre', b + 1070), interlock: interlock([open(ferry, 'Plateau accosté'), ...required], 'L’accostage ne suffit pas : les poids doivent garder leur accord.') });
-  requireAtExit(level, ...required, open(exit, 'Verrou de l’équilibre ouvert'));
   flag(level, b + 1010);
   scene(level, key, three ? 'Trois poids, un accord' : 'Les poids ne montent pas ensemble', b, [
     'Les marques utiles n’occupent pas la même hauteur sur les deux rails. Les extrémités ne donnent pas l’équilibre.',
@@ -137,7 +132,6 @@ function middleLift(level: PlatformLevel, b: number, key: string) {
   add(level, { ...door(exit, 'La porte de l’entresol', b + 990, 310, 180), height: 140,
     interlock: interlock([notch(lift, .5, 'Ascenseur à l’entresol')], 'Le palier d’en haut n’est pas celui qui aligne le verrou.') });
   level.stars.push(point(b + 840, 160));
-  requireAtExit(level, notch(lift, .5, 'Ascenseur laissé à l’entresol'), open(exit, 'Entresol libéré'));
   flag(level, b + 910, 310);
   scene(level, key, 'L’étoile n’est pas la sortie', b, [
     'Deux balcons apparaissent sur le même rail. L’étoile et la sortie n’ont pas la même hauteur.',
@@ -155,7 +149,6 @@ function relay(level: PlatformLevel, b: number, key: string, three = false) {
   add(level, { ...door(first, 'Le premier verrou', b + 570), interlock: interlock([three ? notch(control, .5, 'Commande au centre') : open(control, 'Commande en haut')], 'Le premier verrou écoute la commande, pas la force du geste.') });
   add(level, { ...door(second, 'Le deuxième verrou', b + 820), interlock: interlock([open(first, 'Premier verrou accroché'), three ? open(control, 'Commande en haut') : closed(control, 'Commande revenue en bas')], 'Le verrou précédent reste accroché. La commande peut changer de position.') });
   if (three) add(level, { ...door(last, 'Le dernier verrou', b + 1050), interlock: interlock([open(second, 'Deuxième verrou accroché'), closed(control, 'Commande revenue en bas')], 'Le dernier contact demande de refermer la commande laissée derrière toi.') });
-  requireAtExit(level, closed(control, 'Commande rangée en bas'), open(three ? last : second, 'Dernier verrou accroché'));
   flag(level, b + 690);
   scene(level, key, three ? 'Une commande, trois états' : 'Faut-il vraiment tout laisser ouvert ?', b, [
     'Un verrou levé garde sa position. La commande peut donc servir plusieurs fois.',
@@ -175,7 +168,6 @@ function twinFerries(level: PlatformLevel, b: number, key: string, middle = fals
   add(level, { ...door(pin, 'Le cliquet de l’île', b + 740, 430, 240, 30), interlock: interlock([open(first, 'Passeur amont accosté')], 'Le cliquet attend que le premier passeur atteigne l’île.') });
   const parking = middle ? notch(first, .5, 'Passeur amont sur le contact central') : closed(first, 'Passeur amont rappelé');
   add(level, { ...platform(second, 'Le passeur aval', b + 840, 430, b + 1000, 430), interlock: interlock([open(pin, 'Cliquet de l’île accroché'), parking], 'Le second plateau attend le cliquet et la bonne tension du premier câble.') });
-  requireAtExit(level, parking, open(second, 'Passeur aval accosté'));
   flag(level, b + 780); flag(level, b + 1090);
   scene(level, key, middle ? 'Le bon mou dans le câble' : 'Un relais au milieu du vide', b, [
     'L’île permet de quitter un passeur avant de préparer l’autre. Les câbles ne sont pas indépendants.',
@@ -191,7 +183,6 @@ function halfPress(level: PlatformLevel, b: number, key: string) {
   add(level, { ...door(press, 'La presse à demi-course', b + 700, 430, 120, 170), appearance: 'press', height: 130, detents: [0, .5, 1],
     interlock: interlock([notch(control, .5, 'Régulateur au centre')], 'Le régulateur libère la presse seulement à l’équilibre.') });
   add(level, { ...door(exit, 'Le verrou de la presse', b + 1050), interlock: interlock([notch(press, .5, 'Presse à demi-course'), closed(control, 'Régulateur remis en bas')], 'Le dernier verrou demande une ouverture précise et le régulateur refermé.') });
-  requireAtExit(level, notch(press, .5, 'Presse laissée à demi-course'), closed(control, 'Régulateur rangé'), open(exit, 'Verrou de la presse ouvert'));
   flag(level, b + 870);
   scene(level, key, 'La place d’un petit bonhomme', b, [
     'Soulever la presse au maximum donne de la place, mais pas forcément le bon réglage.',
@@ -201,9 +192,11 @@ function halfPress(level: PlatformLevel, b: number, key: string) {
 }
 
 function base(id: number, title: string, subtitle: string, palette: PlatformLevel['palette'], rooms = 3): PlatformLevel {
+  // The physical locks enforce each puzzle where it is encountered. The finish
+  // flag must not remotely recheck controls the player has already passed.
+  // Keeping the existing geometry and save IDs lets 1.6.0 games resume safely.
   return { id, title, subtitle, palette, width: rooms * 1900 + 160, start: point(140), goal: point(rooms * 1900 + 30),
-    surfaces: [{ a: point(-120), b: point(0) }], hazards: [], drawings: [], stars: [], checkpoints: [], mechanisms: [], puzzles: [], goalRequirements: [],
-    goalMessage: 'Une liaison reste désaccordée. Retrouve le repère éteint : les mécanismes doivent garder leur bonne position.' };
+    surfaces: [{ a: point(-120), b: point(0) }], hazards: [], drawings: [], stars: [], checkpoints: [], mechanisms: [], puzzles: [] };
 }
 function finish(level: PlatformLevel): PlatformLevel {
   floor(level, level.width - 350, level.width + 100);

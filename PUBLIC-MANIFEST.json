@@ -19,12 +19,12 @@
     {
       "path": "CREDITS.md",
       "bytes": 7425,
-      "sha256": "144e62b53719757b988888bb7208779a0cf76de51667bbada4262f53f91e4d82"
+      "sha256": "fad590b837a393424d96e57cc5a0b2e41cf4bb599230f5c88b1c58fcfcabf057"
     },
     {
       "path": "README.md",
-      "bytes": 15159,
-      "sha256": "1f7f150d7b94316162b0fb43eb841ed1f3b0d4ff3344f016d7f8df208a78d566"
+      "bytes": 15619,
+      "sha256": "56c3bacd2e8c9664edbfbcb27c3e8c421616f197ab3dd0390295d503b971cb90"
     },
     {
       "path": "app/globals.css",
@@ -34,7 +34,7 @@
     {
       "path": "app/page.tsx",
       "bytes": 52801,
-      "sha256": "0b198b9bc3d13145d4df11e9df6b05b0ecec42f978dc37f35fa3c4cdcfc02c86"
+      "sha256": "bf83e787d6d390684520345842192295c6f81837dd0c404593c960a2a9a54fc1"
     },
     {
       "path": "components/trait/campaign-notebook.tsx",
@@ -58,13 +58,13 @@
     },
     {
       "path": "docs/BUILD.md",
-      "bytes": 14239,
-      "sha256": "8a39a21dc6f3074707dde9c5a9728341b786dfd0e1a27625267c96ae47793fda"
+      "bytes": 14529,
+      "sha256": "38840ecdc16fe38cbf32e7f7fa21212fee7e6920a5e87f6da95ad877ef2ffa77"
     },
     {
       "path": "docs/MOVEMENTS.md",
-      "bytes": 14339,
-      "sha256": "3426f52d2ff466f125852506d2671b4c745dbc0cd81ad22332e107c9eacc17a2"
+      "bytes": 14536,
+      "sha256": "1d1245d45eba1c99a1ce81f237bf2357b565b7ae6960751eae1049617d25fe21"
     },
     {
       "path": "docs/THIRD-PARTY-NOTICES.md",
@@ -128,8 +128,8 @@
     },
     {
       "path": "lib/trait/platform-advanced-levels.ts",
-      "bytes": 21926,
-      "sha256": "4b8cfd3ecdcd37fa0249a6f7c83133e947d378ddcdce5481d5e738b643045371"
+      "bytes": 20992,
+      "sha256": "e56969d52d208fadd6cc53db7058387156c654159ba1abfa6048cb0a16708c3c"
     },
     {
       "path": "lib/trait/platform-drawing.ts",
@@ -179,12 +179,12 @@
     {
       "path": "package-lock.json",
       "bytes": 56480,
-      "sha256": "3c56896f573ef412ccf652d3310409d21b09a41b54e9dfa67e8445e0a2a5e249"
+      "sha256": "123e70dea6be03ca358c7713ac28c7105fad4c90a78dd1d45b53cd616d418dbe"
     },
     {
       "path": "package.json",
       "bytes": 949,
-      "sha256": "f14f4078021369593e557dacdbccc7d1c08c46040921ee0b84e463fd4f7db58c"
+      "sha256": "bba034537b033a9682a331de2285cff286eee3cbca2505762516562714c4c37b"
     },
     {
       "path": "public/drawing-hand-hd-manifest.json",
@@ -238,8 +238,8 @@
     },
     {
       "path": "tests/advanced-adversarial.test.ts",
-      "bytes": 4805,
-      "sha256": "6d944348d44dc07fe76cdc78f447f63164e92c919d1db00244606637576ad27f"
+      "bytes": 5385,
+      "sha256": "34e39d479d17a616010ed2df0ffbb7b6c638a86822bec6e3bdd22cb05f413664"
     },
     {
       "path": "tests/advanced-camera.test.ts",
@@ -248,8 +248,8 @@
     },
     {
       "path": "tests/advanced-courses.test.ts",
-      "bytes": 3996,
-      "sha256": "ba7c99a3bc31decdb58f80459db0226491d0a84e76f3d04988942dd4e11d6a9d"
+      "bytes": 7992,
+      "sha256": "2f2faa3f0fbd28257b14265a158643cbfadcc5b2bf11de216ebc88713064cad5"
     },
     {
       "path": "tests/advanced-walkthrough.ts",

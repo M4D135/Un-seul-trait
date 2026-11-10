@@ -2,13 +2,15 @@
 
 **Observe les mécanismes. Dessine ton passage. Trouve le bon ordre.**
 
-Une aventure de dessin et d’énigmes en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.6.0** porte l’aventure à **12 chapitres** : six parcours d’initiation, puis six nouveaux chapitres réunissant **19 salles à mécanismes liés**. Fermer un passage, régler un plateau entre ses butées ou rappeler un ascenseur peut devenir nécessaire pour avancer. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et décors à déplacer à la main.
+Une aventure de dessin et d’énigmes en français, inspirée de *La Linea* d’Osvaldo Cavandoli. La version **1.6.1** porte l’aventure à **12 chapitres** : six parcours d’initiation, puis six nouveaux chapitres réunissant **19 salles à mécanismes liés**. Fermer un passage, régler un plateau entre ses butées ou rappeler un ascenseur peut devenir nécessaire pour avancer. La scène occupe toute la fenêtre, avec caméra continue, commandes intégrées, gestes et disputes, et décors à déplacer à la main.
 
 **Projet de fan non officiel.** Le personnage est redessiné en contours vectoriels; la main est une image générée au rendu photographique. La voix utilise 16 très courts fragments originaux. Les origines exactes, traitements et limites sont dans [CREDITS.md](CREDITS.md).
 
 ## Jouer sans compiler
 
-Télécharge **Un-seul-trait-1.6.0.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger. Le menu indique **Version 1.6.0** pour identifier le jeu chargé.
+Télécharge **Un-seul-trait-1.6.1.html** dans [la version publiée](https://github.com/M4D135/Un-seul-trait/releases/latest), puis ouvre-le dans un navigateur moderne. Le fichier contient tout le jeu, la main, les sons et les styles. Le ZIP fournit aussi le dossier de production prêt à héberger. Le menu indique **Version 1.6.1** pour identifier le jeu chargé.
+
+**Correctif 1.6.1 :** la sortie ne reste plus bloquée après une énigme déjà franchie lorsque le pont ou le passeur a été déplacé ensuite. Les sauvegardes de la version 1.6.0 reprennent au dernier drapeau avec leurs étoiles, dessins et mécanismes ; aucun nouveau départ n’est nécessaire.
 
 Le menu propose un accès direct à **l’acte II — La mécanique des idées**. Le chapitre 7 est accessible immédiatement, même si tu souhaites garder les six premiers pour plus tard. Les chapitres 8 à 12 se débloquent en terminant le précédent ; une partie déjà commencée ou terminée reste accessible.
 
@@ -66,7 +68,7 @@ Ces choix modifient réellement le terrain, les manipulations nécessaires ou le
 
 Les poignées reliées ne sont pas indépendantes. De fins traits et des symboles montrent les associations ; un petit contact s’éclaire lorsque sa condition est satisfaite. Pour le circuit observé, les mêmes symboles apparaissent près des emplacements à raccorder sur les rails : on peut lire le mécanisme avant d’essayer. Les crans ordinaires gardent tous le même aspect et facilitent le geste. Les objets suivent toujours le doigt ou la souris. Une fois relâchés, ils gardent leur position, même si une autre commande les verrouille ensuite.
 
-Tout pousser en butée ne résout pas ces salles. Certaines demandent des positions intermédiaires, d’autres une porte refermée derrière le personnage, un plateau vide rappelé au départ ou plusieurs réglages simultanés. Les contacts de sortie vérifient l’assemblage réel. Les 19 nouveaux passages dessinés proposent chacun une rive basse et un balcon distincts ; la hauteur du trait change les dangers rencontrés et les étoiles accessibles.
+Tout pousser en butée ne résout pas ces salles. Certaines demandent des positions intermédiaires, d’autres une porte refermée derrière le personnage, un plateau vide rappelé au départ ou plusieurs réglages simultanés. Les verrous de chaque salle vérifient les positions utiles au moment de la manipulation. Une fois le passage franchi, le drapeau final ne réclame pas de remettre en place des mécanismes laissés derrière soi. Les 19 nouveaux passages dessinés proposent chacun une rive basse et un balcon distincts ; la hauteur du trait change les dangers rencontrés et les étoiles accessibles.
 
 ### Des indices à la demande et des défis de reprise
 
